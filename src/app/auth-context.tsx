@@ -26,6 +26,14 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function getMagicLinkRedirectUrl(): string | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  return new URL("/account", window.location.origin).toString();
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,15 +90,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
           );
         }
 
-        const emailRedirectTo =
-          typeof window === "undefined"
-            ? undefined
-            : `${window.location.origin}/account`;
-
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
-            emailRedirectTo,
+            emailRedirectTo: getMagicLinkRedirectUrl(),
           },
         });
 
