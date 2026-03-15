@@ -13,6 +13,8 @@ interface AccountStats {
   setlists: number;
 }
 
+type AuthStep = "email" | "code";
+
 export function AccountPage() {
   const repositories = useRepositories();
   const syncService = useSyncService();
@@ -20,9 +22,10 @@ export function AccountPage() {
     configurationMessage,
     isConfigured,
     isLoading: isSessionLoading,
-    signInWithMagicLink,
+    sendEmailOtp,
     signOut,
     user,
+    verifyEmailOtp,
   } = useAuth();
   const [stats, setStats] = useState<AccountStats>({
     songs: 0,
@@ -30,6 +33,9 @@ export function AccountPage() {
     setlists: 0,
   });
   const [email, setEmail] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [authStep, setAuthStep] = useState<AuthStep>("email");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,13 +103,24 @@ export function AccountPage() {
     };
   }, [syncService, user]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setAuthStep("email");
+    setPendingEmail("");
+    setOtpCode("");
+    setEmail("");
+  }, [user]);
+
+  async function handleSendCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const normalizedEmail = email.trim();
 
     if (!normalizedEmail) {
-      setError("Enter an email address to receive a magic link.");
+      setError("Enter an email address to receive a sign-in code.");
       return;
     }
 
@@ -112,15 +129,79 @@ export function AccountPage() {
     setIsSubmitting(true);
 
     try {
-      await signInWithMagicLink(normalizedEmail);
-      setFeedback(`Magic link sent to ${normalizedEmail}.`);
+      await sendEmailOtp(normalizedEmail);
+      setPendingEmail(normalizedEmail);
+      setOtpCode("");
+      setAuthStep("code");
+      setFeedback(`A sign-in code was sent to ${normalizedEmail}.`);
     } catch (submitError) {
       setError(
-        submitError instanceof Error ? submitError.message : "Unable to send magic link.",
+        submitError instanceof Error ? submitError.message : "Unable to send code.",
       );
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleVerifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const normalizedCode = otpCode.trim();
+
+    if (!pendingEmail) {
+      setError("Enter your email again to request a new sign-in code.");
+      setAuthStep("email");
+      return;
+    }
+
+    if (!normalizedCode) {
+      setError("Enter the code from your email.");
+      return;
+    }
+
+    setError(null);
+    setFeedback(null);
+    setIsSubmitting(true);
+
+    try {
+      await verifyEmailOtp(pendingEmail, normalizedCode);
+      setFeedback("Signed in.");
+    } catch (verifyError) {
+      setError(
+        verifyError instanceof Error ? verifyError.message : "Unable to verify code.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleResendCode() {
+    if (!pendingEmail) {
+      setAuthStep("email");
+      return;
+    }
+
+    setError(null);
+    setFeedback(null);
+    setIsSubmitting(true);
+
+    try {
+      await sendEmailOtp(pendingEmail);
+      setFeedback(`A new sign-in code was sent to ${pendingEmail}.`);
+    } catch (resendError) {
+      setError(
+        resendError instanceof Error ? resendError.message : "Unable to resend code.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function handleChangeEmail() {
+    setError(null);
+    setFeedback(null);
+    setOtpCode("");
+    setAuthStep("email");
   }
 
   async function handleSignOut() {
@@ -322,14 +403,14 @@ export function AccountPage() {
                 </button>
               </div>
             </div>
-          ) : (
-            <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+          ) : authStep === "email" ? (
+            <form className="mt-5 space-y-4" onSubmit={handleSendCode}>
               <div className="space-y-2">
                 <label
                   htmlFor="account-email"
                   className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[var(--text-soft)]"
                 >
-                  Email magic link
+                  Email sign-in code
                 </label>
                 <input
                   id="account-email"
@@ -350,7 +431,63 @@ export function AccountPage() {
                     !isConfigured || isSubmitting || isSessionLoading || isResetting
                   }
                 >
-                  {isSubmitting ? "Sending..." : "Send magic link"}
+                  {isSubmitting ? "Sending..." : "Send code"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form className="mt-5 space-y-4" onSubmit={handleVerifyCode}>
+              <div className="rounded-[24px] border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[var(--text-soft)]">
+                  Code sent to
+                </p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  {pendingEmail}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="account-otp"
+                  className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[var(--text-soft)]"
+                >
+                  One-time code
+                </label>
+                <input
+                  id="account-otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={otpCode}
+                  onChange={(event) => setOtpCode(event.target.value)}
+                  placeholder="123456"
+                  className="cu-search-field"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="submit"
+                  className="cu-button cu-button-primary"
+                  disabled={isSubmitting || isSessionLoading || isResetting}
+                >
+                  {isSubmitting ? "Verifying..." : "Verify code"}
+                </button>
+                <button
+                  type="button"
+                  className="cu-button cu-button-neutral"
+                  onClick={handleResendCode}
+                  disabled={isSubmitting || isSessionLoading || isResetting}
+                >
+                  Resend code
+                </button>
+                <button
+                  type="button"
+                  className="cu-button cu-button-neutral"
+                  onClick={handleChangeEmail}
+                  disabled={isSubmitting || isSessionLoading || isResetting}
+                >
+                  Change email
                 </button>
               </div>
             </form>

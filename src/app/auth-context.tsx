@@ -20,19 +20,12 @@ interface AuthContextValue {
   session: Session | null;
   user: User | null;
   configurationMessage: string | null;
-  signInWithMagicLink(email: string): Promise<void>;
+  sendEmailOtp(email: string): Promise<void>;
+  verifyEmailOtp(email: string, token: string): Promise<void>;
   signOut(): Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-function getMagicLinkRedirectUrl(): string | undefined {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-
-  return new URL("/account", window.location.origin).toString();
-}
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
@@ -83,7 +76,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       session,
       user: session?.user ?? null,
       configurationMessage: supabaseConfigurationMessage,
-      async signInWithMagicLink(email: string) {
+      async sendEmailOtp(email: string) {
         if (!supabase) {
           throw new Error(
             supabaseConfigurationMessage ?? "Supabase auth is not configured.",
@@ -93,8 +86,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
-            emailRedirectTo: getMagicLinkRedirectUrl(),
+            shouldCreateUser: true,
           },
+        });
+
+        if (error) {
+          throw error;
+        }
+      },
+      async verifyEmailOtp(email: string, token: string) {
+        if (!supabase) {
+          throw new Error(
+            supabaseConfigurationMessage ?? "Supabase auth is not configured.",
+          );
+        }
+
+        const { error } = await supabase.auth.verifyOtp({
+          email,
+          token,
+          type: "email",
         });
 
         if (error) {
