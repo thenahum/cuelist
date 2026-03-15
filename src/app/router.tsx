@@ -1,7 +1,7 @@
 import { Navigate, createBrowserRouter } from "react-router-dom";
 
 import { AppShell } from "../components/app-shell";
-import { HomePage } from "../features/home/home-page";
+import { AccountPage } from "../features/account/account-page";
 import { PerformanceTypesPage } from "../features/performance-types/performance-types-page";
 import { PerformModePage } from "../features/setlists/perform-mode-page";
 import { SetlistEditorPage } from "../features/setlists/setlist-editor-page";
@@ -47,8 +47,12 @@ export const router = createBrowserRouter([
         element: <SetlistEditorPage />,
       },
       {
+        path: "account",
+        element: <AccountPage />,
+      },
+      {
         path: "more",
-        element: <HomePage />,
+        element: <Navigate to="/account" replace />,
       },
       {
         path: "setlists/:id/perform",

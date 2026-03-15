@@ -31,8 +31,8 @@ export const seededSongs: Song[] = [
     id: "song_midnight_signal",
     title: "Midnight Signal",
     sourceType: "original",
-    lyrics: "City lights blur in the rearview\nI keep the chorus close tonight",
-    chords: "[Em]City lights blur in the [C]rearview",
+    songSheet:
+      "[Em]City lights blur in the [C]rearview\nI keep the chorus close tonight",
     personalNotes: "Keep verse one restrained. Open up on the second chorus.",
     tags: ["opener", "dynamic"],
     performanceProfiles: [
@@ -55,10 +55,8 @@ export const seededSongs: Song[] = [
     title: "Glass on the Floor",
     artist: "Chris Whitley",
     sourceType: "cover",
-    lyrics: "Broken rooms and borrowed time",
-    chords: "[Am]Broken rooms and [F]borrowed time",
-    externalChordUrl: "https://example.com/glass-on-the-floor/chords",
-    externalLyricUrl: "https://example.com/glass-on-the-floor/lyrics",
+    songSheet: "[Am]Broken rooms and [F]borrowed time",
+    externalTabsUrl: "https://example.com/glass-on-the-floor/chords",
     tags: ["cover", "late-set"],
     performanceProfiles: [
       {
@@ -79,8 +77,8 @@ export const seededSongs: Song[] = [
     id: "song_rusted_satellite",
     title: "Rusted Satellite",
     sourceType: "original",
-    lyrics: "Static in the rafters, heartbeat in the kick drum",
-    chords: "[Dm]Static in the rafters",
+    songSheet:
+      "[Dm]Static in the rafters\nheartbeat in the [G]kick drum",
     personalNotes: "Practice bridge transition slowly with metronome.",
     tags: ["practice", "band"],
     performanceProfiles: [
@@ -103,8 +101,7 @@ export const seededSongs: Song[] = [
     title: "Northern Line",
     artist: "Nick Drake",
     sourceType: "cover",
-    lyrics: "Smoke from the station and a cold black sky",
-    chords: "[G]Smoke from the station",
+    songSheet: "[G]Smoke from the station\nand a cold black sky",
     personalNotes: "Keep spoken intro short.",
     tags: ["quiet", "encore"],
     performanceProfiles: [

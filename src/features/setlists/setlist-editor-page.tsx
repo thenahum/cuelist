@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { useRepositories } from "../../app/repository-context";
+import { PageShell } from "../../components/page-shell";
 import type {
   PerformanceType,
   Setlist,
@@ -104,7 +105,8 @@ export function SetlistEditorPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <PageShell mode="editor">
+        <div className="space-y-4">
         <Link
           to={listPath}
           className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
@@ -115,13 +117,15 @@ export function SetlistEditorPage() {
         <div className="rounded-[26px] border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--text-muted)]">
           Loading setlist...
         </div>
-      </div>
+        </div>
+      </PageShell>
     );
   }
 
   if (error || (!isCreating && !setlist)) {
     return (
-      <div className="space-y-4">
+      <PageShell mode="editor">
+        <div className="space-y-4">
         <Link
           to={listPath}
           className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
@@ -132,20 +136,23 @@ export function SetlistEditorPage() {
         <div className="rounded-[26px] border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--text-muted)]">
           {error ?? "This setlist could not be loaded."}
         </div>
-      </div>
+        </div>
+      </PageShell>
     );
   }
 
   return (
-    <SetlistEditor
-      setlist={setlist ?? undefined}
-      songs={songs}
-      performanceTypes={performanceTypes}
-      backTo={listPath}
-      detailPath={isCreating ? undefined : detailPath}
-      onSave={handleSave}
-      onDelete={handleDelete}
-      onCancel={() => navigate(listPath)}
-    />
+    <PageShell mode="editor">
+      <SetlistEditor
+        setlist={setlist ?? undefined}
+        songs={songs}
+        performanceTypes={performanceTypes}
+        backTo={listPath}
+        detailPath={isCreating ? undefined : detailPath}
+        onSave={handleSave}
+        onDelete={handleDelete}
+        onCancel={() => navigate(listPath)}
+      />
+    </PageShell>
   );
 }

@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 
 import { useTheme } from "../app/theme-context";
+import { PageShell } from "./page-shell";
 
 const navigationItems = [
   { to: "/songs", label: "Songs" },
@@ -27,10 +28,6 @@ function MenuIcon() {
 }
 
 function isNavItemActive(pathname: string, itemPath: string): boolean {
-  if (itemPath === "/more") {
-    return pathname.startsWith("/more") || pathname.startsWith("/performance-types");
-  }
-
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 
@@ -45,7 +42,8 @@ export function AppShell() {
   const isPerformMode = location.pathname.includes("/perform");
   const hideShellHeader =
     location.pathname.startsWith("/songs") || location.pathname.startsWith("/setlists");
-  const isMoreActive =
+  const isAccountActive =
+    location.pathname.startsWith("/account") ||
     location.pathname.startsWith("/more") ||
     location.pathname.startsWith("/performance-types");
 
@@ -65,31 +63,33 @@ export function AppShell() {
 
   return (
     <div className="cu-app-shell">
-      <div className="mx-auto flex min-h-svh w-full max-w-6xl flex-col px-4 pb-28 pt-4 sm:px-6 lg:px-8">
+      <div className="flex min-h-svh flex-col pb-28 pt-4">
         {hideShellHeader ? null : (
-          <header className="cu-shell-header">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-[var(--brand-soft)]">
-                  CueList
-                </p>
-                <p className="mt-2 text-lg font-semibold tracking-tight text-[var(--text-primary)] sm:text-xl">
-                  {location.pathname.startsWith("/setlists")
-                    ? "Setlists"
-                    : isMoreActive
-                      ? "More"
-                      : "Songs"}
-                </p>
+          <PageShell>
+            <header className="cu-shell-header">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-[var(--brand-soft)]">
+                    CueList
+                  </p>
+                  <p className="mt-2 text-lg font-semibold tracking-tight text-[var(--text-primary)] sm:text-xl">
+                    {location.pathname.startsWith("/setlists")
+                      ? "Setlists"
+                      : isAccountActive
+                        ? "Account"
+                        : "Songs"}
+                  </p>
+                </div>
+                <div className="hidden rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-2 text-sm text-[var(--text-secondary)] sm:block">
+                  {location.pathname.startsWith("/songs")
+                    ? "Catalog"
+                    : location.pathname.startsWith("/setlists")
+                      ? "Live Planning"
+                      : "Session & Stats"}
+                </div>
               </div>
-              <div className="hidden rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-2 text-sm text-[var(--text-secondary)] sm:block">
-                {location.pathname.startsWith("/songs")
-                  ? "Catalog"
-                  : location.pathname.startsWith("/setlists")
-                    ? "Live Planning"
-                    : "Utilities"}
-              </div>
-            </div>
-          </header>
+            </header>
+          </PageShell>
         )}
 
         <main className="flex-1">
@@ -112,8 +112,8 @@ export function AppShell() {
           <button
             type="button"
             onClick={() => setIsMenuOpen((current) => !current)}
-            aria-label="Open more menu"
-            className={navClassName(isMenuOpen || isMoreActive)}
+            aria-label="Open menu"
+            className={navClassName(isMenuOpen || isAccountActive)}
           >
             <MenuIcon />
           </button>
@@ -131,15 +131,15 @@ export function AppShell() {
           <section className="cu-menu-panel">
             <div className="space-y-3">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--brand-soft)]">
-                More
+                Menu
               </p>
               <div className="space-y-2">
                 <Link
-                  to="/more"
+                  to="/account"
                   className="cu-menu-link"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Overview
+                  Account & Stats
                 </Link>
                 <Link
                   to="/performance-types"

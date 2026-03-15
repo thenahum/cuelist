@@ -663,7 +663,7 @@ export function SetlistEditor({
                   key={songEntry.id}
                   to={song ? `/songs/${song.id}` : "#"}
                   state={songLinkState}
-                  className="group block rounded-[26px] border border-[var(--border)] bg-[var(--surface-soft)] p-4 transition hover:border-[var(--border-strong)] hover:shadow-[0_18px_44px_var(--shadow)] sm:p-5"
+                  className="group block rounded-[26px] border border-[var(--border)] bg-[var(--surface-soft)] p-4 transition hover:border-[var(--border-strong)] sm:p-5"
                 >
                   <div className="flex gap-4">
                     <div className="shrink-0">
@@ -726,7 +726,7 @@ export function SetlistEditor({
                 className={[
                   "rounded-[26px] border bg-[var(--surface-soft)] p-4 transition sm:p-5",
                   isDropTarget
-                    ? "border-[color-mix(in_srgb,var(--brand)_50%,var(--border-strong))] shadow-[0_18px_44px_var(--shadow)]"
+                    ? "border-[color-mix(in_srgb,var(--brand)_50%,var(--border-strong))] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--surface-soft))]"
                     : "border-[var(--border)]",
                 ].join(" ")}
               >
@@ -852,7 +852,7 @@ export function SetlistEditor({
             type="button"
             disabled={isSaving || isDeleting}
             onClick={handleDelete}
-            className="cu-song-delete-button"
+            className="cu-button cu-button-destructive"
           >
             {isDeleting ? "Deleting..." : "Delete setlist"}
           </button>

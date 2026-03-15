@@ -54,11 +54,9 @@ export function createEmptySongDraft(): SongDraft {
     title: "",
     artist: "",
     sourceType: "original",
-    lyrics: "",
-    chords: "",
+    songSheet: "",
     personalNotes: "",
-    externalChordUrl: "",
-    externalLyricUrl: "",
+    externalTabsUrl: "",
     tags: [],
     performanceProfiles: [],
   };

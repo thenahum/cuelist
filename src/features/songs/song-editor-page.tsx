@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { useRepositories } from "../../app/repository-context";
+import { PageShell } from "../../components/page-shell";
 import type { PerformanceType, Song, SongDraft } from "../../domain/models";
 import { SongEditor } from "./song-editor";
 
@@ -94,7 +95,8 @@ export function SongEditorPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <PageShell mode="editor">
+        <div className="space-y-4">
         <Link
           to={backTo}
           className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
@@ -105,13 +107,15 @@ export function SongEditorPage() {
         <div className="rounded-[26px] border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--text-muted)]">
           Loading song...
         </div>
-      </div>
+        </div>
+      </PageShell>
     );
   }
 
   if (error || (!isCreating && !song)) {
     return (
-      <div className="space-y-4">
+      <PageShell mode="editor">
+        <div className="space-y-4">
         <Link
           to={backTo}
           className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
@@ -122,19 +126,22 @@ export function SongEditorPage() {
         <div className="rounded-[26px] border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--text-muted)]">
           {error ?? "This song could not be loaded."}
         </div>
-      </div>
+        </div>
+      </PageShell>
     );
   }
 
   return (
-    <SongEditor
-      song={song ?? undefined}
-      performanceTypes={performanceTypes}
-      backTo={backTo}
-      backLabel={backLabel}
-      onSave={handleSave}
-      onDelete={handleDelete}
-      onCancel={() => navigate(backTo)}
-    />
+    <PageShell mode="editor">
+      <SongEditor
+        song={song ?? undefined}
+        performanceTypes={performanceTypes}
+        backTo={backTo}
+        backLabel={backLabel}
+        onSave={handleSave}
+        onDelete={handleDelete}
+        onCancel={() => navigate(backTo)}
+      />
+    </PageShell>
   );
 }
