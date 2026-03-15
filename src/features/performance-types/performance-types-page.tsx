@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import type { PerformanceType, Setlist, Song } from "../../domain/models";
 import { useRepositories } from "../../app/repository-context";
+import { PageContentStack } from "../../components/page-content-stack";
 import { PageShell } from "../../components/page-shell";
 
 const inputClassName =
@@ -298,8 +299,9 @@ export function PerformanceTypesPage() {
     : false;
 
   return (
-    <PageShell className="relative space-y-4">
-      <section className="px-1 pt-2">
+    <PageShell className="relative">
+      <PageContentStack>
+      <section>
         <div className="space-y-4">
           <div>
             <Link to="/songs" className="cu-button cu-button-neutral cu-button-small">
@@ -330,7 +332,7 @@ export function PerformanceTypesPage() {
         </div>
       </section>
 
-      <section className="px-1">
+      <section>
         <label className="block text-sm text-[var(--text-secondary)]">
           Search
           <input
@@ -418,6 +420,7 @@ export function PerformanceTypesPage() {
             ))
           : null}
       </section>
+      </PageContentStack>
 
       {activeType || isCreating ? (
         <div className="cu-editor-overlay">

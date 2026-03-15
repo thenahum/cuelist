@@ -19,7 +19,8 @@ CueList currently includes:
 - a dedicated Perform mode for stage use with large navigation and lyrics/chords display
 - a Performance Types management screen with modal add/edit flows
 - light mode and dark mode
-- seeded local development data
+- Supabase auth with Account page magic-link login/logout
+- manual local-first sync controls for signed-in users
 
 ## Stack
 
@@ -66,7 +67,7 @@ npm run lint
 - `/setlists/:id`
 - `/setlists/:id/perform`
 - `/performance-types`
-- `/more`
+- `/account`
 
 ## UX Direction
 
@@ -100,14 +101,14 @@ defines repository interfaces for:
 
 ### Data Layer
 
-Dexie is used for the MVP local persistence layer:
+Dexie is used as the active local-first persistence layer:
 
 - `src/data/db/cuelist-db.ts`
 - `src/data/repositories/dexie-song-repository.ts`dexie-song-repository.ts)
 - `src/data/repositories/dexie-setlist-repository.ts`dexie-setlist-repository.ts)
 - `src/data/repositories/dexie-performance-type-repository.ts`
 
-Seed data lives in:
+Development-only seed utilities live in:
 
 - `src/data/seeds/mock-data.ts`
 - `src/data/seeds/seed-database.ts`
@@ -131,7 +132,10 @@ implementation much easier to plug in.
 
 ## Notes For Future Work
 
-- Supabase is the intended next persistence backend for cross-device sync
+- Supabase auth is now wired for magic-link login/logout via the Account page,
+  while IndexedDB remains the active local-first data store
+- Supabase sync is now in an early manual push/pull phase, with Dexie still
+  acting as the primary local store
 - the repository boundary is already in place for that migration
 - perform mode and song-sheet rendering can continue converging on a shared renderer
 - there is currently no automated test suite yet; validation is build + lint + manual UI testing

@@ -6,7 +6,7 @@ import { bootstrapApp } from "./app/bootstrap";
 import "./index.css";
 
 async function start() {
-  const repositories = await bootstrapApp();
+  const { repositories, syncService } = await bootstrapApp();
   const rootElement = document.getElementById("root");
 
   if (!rootElement) {
@@ -15,7 +15,7 @@ async function start() {
 
   createRoot(rootElement).render(
     <StrictMode>
-      <App repositories={repositories} />
+      <App repositories={repositories} syncService={syncService} />
     </StrictMode>,
   );
 }

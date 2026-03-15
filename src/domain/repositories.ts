@@ -10,6 +10,8 @@ import type {
 } from "./models";
 
 export interface PerformanceTypeRepository {
+  // TODO(sync): Future Supabase-backed records should carry auth user_id
+  // ownership while preserving the stable local IDs already used in the UI.
   list(): Promise<PerformanceType[]>;
   getById(id: EntityId): Promise<PerformanceType | undefined>;
   create(draft: PerformanceTypeDraft): Promise<PerformanceType>;

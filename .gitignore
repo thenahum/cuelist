@@ -4,3 +4,7 @@ dist/
 vite.config.js
 vite.config.d.ts
 .env
+.env.*
+!.env.example
+.vercel/
+.DS_Store

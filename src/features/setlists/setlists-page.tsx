@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { useRepositories } from "../../app/repository-context";
+import { PageContentStack } from "../../components/page-content-stack";
 import { PageShell } from "../../components/page-shell";
 import type {
   PerformanceType,
@@ -210,8 +211,9 @@ export function SetlistsPage() {
   }
 
   return (
-    <PageShell className="relative space-y-4">
-      <section className="px-1 pt-2">
+    <PageShell className="relative">
+      <PageContentStack>
+      <section>
         <div className="flex items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
@@ -402,6 +404,7 @@ export function SetlistsPage() {
             ))
           : null}
       </section>
+      </PageContentStack>
 
       <div className="cu-setlist-action-zone">
         <button
