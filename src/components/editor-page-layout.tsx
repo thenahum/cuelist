@@ -19,12 +19,12 @@ export function EditorPageLayout({
 }: EditorPageLayoutProps) {
   return (
     <div className="space-y-5">
-      <section className="rounded-[30px] border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 shadow-2xl shadow-black/15 backdrop-blur">
+      <section className="cu-panel p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <Link
               to={backTo}
-              className="inline-flex rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:text-white"
+              className="cu-button cu-button-neutral"
             >
               {backLabel}
             </Link>
@@ -41,7 +41,7 @@ export function EditorPageLayout({
         </div>
       </section>
 
-      <section className="rounded-[30px] border border-white/10 bg-slate-950/60 p-3 shadow-xl shadow-black/10 backdrop-blur sm:p-4">
+      <section className="cu-panel p-3 sm:p-4">
         {children}
       </section>
     </div>

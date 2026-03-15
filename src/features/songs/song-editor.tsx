@@ -12,7 +12,6 @@ import type {
 import { createId } from "../../shared/id";
 import { PerformanceProfileChip } from "./performance-profile-chip";
 import {
-  extractLyricsFromSongSheet,
   getSongSheetContent,
   SongSheetRenderer,
   type SongSheetScale,
@@ -50,8 +49,7 @@ interface SongFormState {
   sourceType: SourceType;
   songSheet: string;
   personalNotes: string;
-  externalChordUrl: string;
-  externalLyricUrl: string;
+  externalTabsUrl: string;
   tags: string;
   performanceProfiles: EditableProfile[];
 }
@@ -121,8 +119,7 @@ function createFormState(song?: Song): SongFormState {
       sourceType: draft.sourceType,
       songSheet: getSongSheetContent(draft) ?? "",
       personalNotes: draft.personalNotes ?? "",
-      externalChordUrl: draft.externalChordUrl ?? "",
-      externalLyricUrl: draft.externalLyricUrl ?? "",
+      externalTabsUrl: draft.externalTabsUrl ?? "",
       tags: formatTagInput(draft.tags),
       performanceProfiles: [],
     };
@@ -134,8 +131,7 @@ function createFormState(song?: Song): SongFormState {
     sourceType: song.sourceType,
     songSheet: getSongSheetContent(song) ?? "",
     personalNotes: song.personalNotes ?? "",
-    externalChordUrl: song.externalChordUrl ?? "",
-    externalLyricUrl: song.externalLyricUrl ?? "",
+    externalTabsUrl: song.externalTabsUrl ?? "",
     tags: formatTagInput(song.tags),
     performanceProfiles: song.performanceProfiles.map((profile) => ({
       rowId: createId("profile"),
@@ -274,13 +270,9 @@ export function SongEditor({
       title: formState.title.trim(),
       artist: normalizeOptionalText(formState.artist),
       sourceType: formState.sourceType,
-      lyrics: normalizedSongSheet
-        ? normalizeOptionalText(extractLyricsFromSongSheet(normalizedSongSheet))
-        : undefined,
-      chords: normalizedSongSheet,
+      songSheet: normalizedSongSheet,
       personalNotes: normalizeOptionalText(formState.personalNotes),
-      externalChordUrl: normalizeOptionalText(formState.externalChordUrl),
-      externalLyricUrl: normalizeOptionalText(formState.externalLyricUrl),
+      externalTabsUrl: normalizeOptionalText(formState.externalTabsUrl),
       tags: parseTagInput(formState.tags),
       performanceProfiles: sanitizeProfiles(formState.performanceProfiles),
     };
@@ -469,6 +461,18 @@ export function SongEditor({
       </section>
 
       <section className="cu-song-workspace-panel">
+        {!isEditMode && formState.externalTabsUrl ? (
+          <div className="mb-4 border-b border-[var(--border)] pb-4">
+            <a
+              href={formState.externalTabsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cu-external-tabs-button"
+            >
+              Open Tabs ↗
+            </a>
+          </div>
+        ) : null}
         {isEditMode ? (
           <textarea
             ref={songSheetEditorRef}
@@ -604,60 +608,31 @@ heartbeat in the [G]kick drum`}
                 </div>
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-soft)]">
-                    External chords
-                  </p>
-                  {isEditMode ? (
-                    <input
-                      className={fieldClassName}
-                      value={formState.externalChordUrl}
-                      onChange={(event) =>
-                        updateField("externalChordUrl", event.target.value)
-                      }
-                      placeholder="Optional URL"
-                    />
-                  ) : formState.externalChordUrl ? (
-                    <a
-                      href={formState.externalChordUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm text-[var(--brand-soft)] underline-offset-4 hover:underline"
-                    >
-                      Open chord source
-                    </a>
-                  ) : (
-                    <p className="text-sm text-[var(--text-muted)]">None saved.</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-soft)]">
-                    External lyrics
-                  </p>
-                  {isEditMode ? (
-                    <input
-                      className={fieldClassName}
-                      value={formState.externalLyricUrl}
-                      onChange={(event) =>
-                        updateField("externalLyricUrl", event.target.value)
-                      }
-                      placeholder="Optional URL"
-                    />
-                  ) : formState.externalLyricUrl ? (
-                    <a
-                      href={formState.externalLyricUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm text-[var(--brand-soft)] underline-offset-4 hover:underline"
-                    >
-                      Open lyric source
-                    </a>
-                  ) : (
-                    <p className="text-sm text-[var(--text-muted)]">None saved.</p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-soft)]">
+                  External tabs link
+                </p>
+                {isEditMode ? (
+                  <input
+                    className={fieldClassName}
+                    value={formState.externalTabsUrl}
+                    onChange={(event) =>
+                      updateField("externalTabsUrl", event.target.value)
+                    }
+                    placeholder="Optional URL"
+                  />
+                ) : formState.externalTabsUrl ? (
+                  <a
+                    href={formState.externalTabsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cu-external-tabs-button"
+                  >
+                    Open Tabs ↗
+                  </a>
+                ) : (
+                  <p className="text-sm text-[var(--text-muted)]">None saved.</p>
+                )}
               </div>
 
               <div className="border-t border-[var(--border)] pt-5">
@@ -809,7 +784,7 @@ heartbeat in the [G]kick drum`}
                     type="button"
                     disabled={isSaving || isDeleting}
                     onClick={handleDelete}
-                    className="cu-song-delete-button"
+                    className="cu-button cu-button-destructive"
                   >
                     {isDeleting ? "Deleting..." : "Delete song"}
                   </button>

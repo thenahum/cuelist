@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import type { PerformanceType, Setlist, Song } from "../../domain/models";
 import { useRepositories } from "../../app/repository-context";
+import { PageShell } from "../../components/page-shell";
 
 const inputClassName =
   "mt-2 cu-search-field";
@@ -297,7 +298,7 @@ export function PerformanceTypesPage() {
     : false;
 
   return (
-    <div className="relative space-y-4 pb-28">
+    <PageShell className="relative space-y-4">
       <section className="px-1 pt-2">
         <div className="space-y-4">
           <div>
@@ -517,6 +518,6 @@ export function PerformanceTypesPage() {
           </form>
         </div>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

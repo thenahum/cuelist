@@ -1,10 +1,19 @@
 import Dexie, { type Table } from "dexie";
 
 import type { PerformanceType, Setlist, Song } from "../../domain/models";
+import { getSongSheetContent } from "../../domain/song-sheet";
 
 interface AppMetaRecord {
   key: string;
   value: string;
+}
+
+interface LegacySongRecord extends Song {
+  songSheet?: string;
+  lyrics?: string;
+  chords?: string;
+  externalChordUrl?: string;
+  externalLyricUrl?: string;
 }
 
 export class CueListDexieDatabase extends Dexie {
@@ -23,6 +32,68 @@ export class CueListDexieDatabase extends Dexie {
         "id, title, venue, performanceDate, defaultPerformanceTypeId, createdAt, updatedAt",
       meta: "key",
     });
+
+    this.version(2)
+      .stores({
+        performanceTypes: "id, name, isSeeded, createdAt, updatedAt",
+        songs: "id, title, artist, sourceType, createdAt, updatedAt, *tags",
+        setlists:
+          "id, title, venue, performanceDate, defaultPerformanceTypeId, createdAt, updatedAt",
+        meta: "key",
+      })
+      .upgrade(async (transaction) => {
+        const songsTable = transaction.table<LegacySongRecord, string>("songs");
+        const songs = await songsTable.toArray();
+
+        await Promise.all(
+          songs.map((song) => {
+            const { externalChordUrl, externalLyricUrl, ...rest } = song;
+
+            return songsTable.put({
+              ...rest,
+              externalTabsUrl:
+                song.externalTabsUrl ?? externalChordUrl ?? externalLyricUrl,
+            });
+          }),
+        );
+      });
+
+    this.version(3)
+      .stores({
+        performanceTypes: "id, name, isSeeded, createdAt, updatedAt",
+        songs: "id, title, artist, sourceType, createdAt, updatedAt, *tags",
+        setlists:
+          "id, title, venue, performanceDate, defaultPerformanceTypeId, createdAt, updatedAt",
+        meta: "key",
+      })
+      .upgrade(async (transaction) => {
+        const songsTable = transaction.table<LegacySongRecord, string>("songs");
+        const songs = await songsTable.toArray();
+
+        await Promise.all(
+          songs.map((song) => {
+            const {
+              songSheet,
+              lyrics,
+              chords,
+              externalChordUrl,
+              externalLyricUrl,
+              ...rest
+            } = song;
+
+            return songsTable.put({
+              ...rest,
+              songSheet: getSongSheetContent({
+                songSheet,
+                lyrics,
+                chords,
+              }),
+              externalTabsUrl:
+                song.externalTabsUrl ?? externalChordUrl ?? externalLyricUrl,
+            });
+          }),
+        );
+      });
   }
 }
 

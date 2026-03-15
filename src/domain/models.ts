@@ -23,11 +23,9 @@ export interface Song {
   title: string;
   artist?: string;
   sourceType: SourceType;
-  lyrics?: string;
-  chords?: string;
+  songSheet?: string;
   personalNotes?: string;
-  externalChordUrl?: string;
-  externalLyricUrl?: string;
+  externalTabsUrl?: string;
   tags?: string[];
   performanceProfiles: SongPerformanceProfile[];
   createdAt: string;

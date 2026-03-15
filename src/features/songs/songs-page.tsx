@@ -15,6 +15,7 @@ import type {
   SourceType,
 } from "../../domain/models";
 import { useRepositories } from "../../app/repository-context";
+import { PageShell } from "../../components/page-shell";
 import { PerformanceProfileChip } from "./performance-profile-chip";
 import {
   comfortLevelOptions,
@@ -325,7 +326,7 @@ export function SongsPage() {
   }
 
   return (
-    <div className="relative space-y-4 pb-28">
+    <PageShell className="relative space-y-4">
       <section className="px-1 pt-2">
         <div className="flex items-end justify-between gap-4">
           <div>
@@ -602,6 +603,6 @@ export function SongsPage() {
           <PlusIcon />
         </Link>
       </div>
-    </div>
+    </PageShell>
   );
 }

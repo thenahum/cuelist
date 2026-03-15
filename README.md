@@ -127,7 +127,7 @@ implementation much easier to plug in.
 - Songs: `src/features/songs`
 - Setlists: `src/features/setlists`
 - Performance Types: `src/features/performance-types`
-- More / overview: `src/features/home`
+- Account: `src/features/account`
 
 ## Notes For Future Work
 
