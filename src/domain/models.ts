@@ -11,6 +11,8 @@ export interface SongPerformanceProfile {
 }
 
 export interface PerformanceType {
+  // TODO(sync): add future auth user_id ownership in the Supabase layer while
+  // keeping these local IDs stable for offline-first usage.
   id: EntityId;
   name: string;
   isSeeded: boolean;

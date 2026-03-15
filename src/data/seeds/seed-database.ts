@@ -5,6 +5,9 @@ import {
   seededSongs,
 } from "./mock-data";
 
+// Development-only utility.
+// This is intentionally not called from the normal app bootstrap flow so new
+// users start with an empty local database in production and preview deploys.
 const SEED_VERSION = "phase-1";
 
 export async function ensureDatabaseSeeded(

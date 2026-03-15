@@ -41,7 +41,9 @@ export function AppShell() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isPerformMode = location.pathname.includes("/perform");
   const hideShellHeader =
-    location.pathname.startsWith("/songs") || location.pathname.startsWith("/setlists");
+    location.pathname.startsWith("/songs") ||
+    location.pathname.startsWith("/setlists") ||
+    location.pathname.startsWith("/account");
   const isAccountActive =
     location.pathname.startsWith("/account") ||
     location.pathname.startsWith("/more") ||
@@ -139,7 +141,7 @@ export function AppShell() {
                   className="cu-menu-link"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Account & Stats
+                  Account
                 </Link>
                 <Link
                   to="/performance-types"

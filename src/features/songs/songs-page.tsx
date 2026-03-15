@@ -15,6 +15,7 @@ import type {
   SourceType,
 } from "../../domain/models";
 import { useRepositories } from "../../app/repository-context";
+import { PageContentStack } from "../../components/page-content-stack";
 import { PageShell } from "../../components/page-shell";
 import { PerformanceProfileChip } from "./performance-profile-chip";
 import {
@@ -326,8 +327,9 @@ export function SongsPage() {
   }
 
   return (
-    <PageShell className="relative space-y-4">
-      <section className="px-1 pt-2">
+    <PageShell className="relative">
+      <PageContentStack>
+      <section>
         <div className="flex items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)]">
@@ -584,6 +586,7 @@ export function SongsPage() {
             ))
           : null}
       </section>
+      </PageContentStack>
 
       <div className="cu-song-action-zone">
         <button
