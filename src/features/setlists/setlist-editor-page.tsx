@@ -9,6 +9,10 @@ import type {
   SetlistDraft,
   Song,
 } from "../../domain/models";
+import {
+  addObservabilityBreadcrumb,
+  captureObservabilityError,
+} from "../../lib/observability";
 import { SetlistEditor } from "./setlist-editor";
 
 function toErrorMessage(error: unknown): string {
@@ -89,13 +93,51 @@ export function SetlistEditorPage() {
   ]);
 
   async function handleSave(nextSetlist: Setlist | SetlistDraft) {
-    const savedSetlist =
-      "id" in nextSetlist
+    const isUpdating = "id" in nextSetlist;
+    const operation = isUpdating ? "setlist.update" : "setlist.create";
+
+    addObservabilityBreadcrumb({
+      category: "setlist",
+      message: isUpdating ? "Setlist update started" : "Setlist save started",
+      data: {
+        operation,
+        route: location.pathname,
+        setlistId: "id" in nextSetlist ? nextSetlist.id : undefined,
+        songEntryCount: nextSetlist.songEntries.length,
+      },
+    });
+
+    try {
+      const savedSetlist = isUpdating
         ? await repositories.setlists.update(nextSetlist)
         : await repositories.setlists.create(nextSetlist);
 
-    setSetlist(savedSetlist);
-    navigate(`/setlists/${savedSetlist.id}${location.search}`, { replace: true });
+      addObservabilityBreadcrumb({
+        category: "setlist",
+        message: isUpdating ? "Setlist update completed" : "Setlist save completed",
+        data: {
+          operation,
+          route: location.pathname,
+          setlistId: savedSetlist.id,
+          songEntryCount: savedSetlist.songEntries.length,
+        },
+      });
+
+      setSetlist(savedSetlist);
+      navigate(`/setlists/${savedSetlist.id}${location.search}`, { replace: true });
+    } catch (error) {
+      captureObservabilityError(error, {
+        operation,
+        route: location.pathname,
+        context: {
+          route: location.pathname,
+          setlistId: "id" in nextSetlist ? nextSetlist.id : undefined,
+          songEntryCount: nextSetlist.songEntries.length,
+          defaultPerformanceTypeId: nextSetlist.defaultPerformanceTypeId,
+        },
+      });
+      throw error;
+    }
   }
 
   async function handleDelete(nextSetlist: Setlist) {

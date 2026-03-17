@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { useTheme } from "../../app/theme-context";
 import { useRepositories } from "../../app/repository-context";
 import type { PerformanceType, Setlist, Song } from "../../domain/models";
+import {
+  addObservabilityBreadcrumb,
+  captureObservabilityError,
+} from "../../lib/observability";
 import {
   getSongSheetContent,
   SongSheetRenderer,
@@ -98,6 +102,7 @@ export function PerformModePage() {
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [songSheetScale, setSongSheetScale] = useState<SongSheetScale>("xlarge");
+  const lastObservedSetlistIdRef = useRef<string | null>(null);
   const [contentMode, setContentMode] = useState<ContentMode>(() => {
     if (typeof window === "undefined") {
       return "lyrics_chords";
@@ -121,6 +126,14 @@ export function PerformModePage() {
       setIsLoading(true);
 
       try {
+        addObservabilityBreadcrumb({
+          category: "perform",
+          message: "Perform mode load started",
+          data: {
+            route: `/setlists/${id}/perform`,
+            setlistId: id,
+          },
+        });
         const [loadedSetlist, loadedSongs, loadedPerformanceTypes] =
           await Promise.all([
             repositories.setlists.getById(id),
@@ -146,6 +159,14 @@ export function PerformModePage() {
         setError(null);
       } catch (loadError) {
         if (!cancelled) {
+          captureObservabilityError(loadError, {
+            operation: "perform.enter",
+            route: `/setlists/${id}/perform`,
+            context: {
+              route: `/setlists/${id}/perform`,
+              setlistId: id,
+            },
+          });
           setError(toErrorMessage(loadError));
         }
       } finally {
@@ -260,6 +281,23 @@ export function PerformModePage() {
   const songSheetContent = currentEntry
     ? getSongSheetContent(currentEntry.song)
     : undefined;
+
+  useEffect(() => {
+    if (!setlist || lastObservedSetlistIdRef.current === setlist.id) {
+      return;
+    }
+
+    lastObservedSetlistIdRef.current = setlist.id;
+    addObservabilityBreadcrumb({
+      category: "perform",
+      message: "Perform mode entered",
+      data: {
+        route: `/setlists/${setlist.id}/perform`,
+        setlistId: setlist.id,
+        songEntryCount: performEntries.length,
+      },
+    });
+  }, [performEntries.length, setlist]);
 
   if (isLoading) {
     return (

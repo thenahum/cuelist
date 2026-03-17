@@ -9,6 +9,11 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 
 import {
+  addObservabilityBreadcrumb,
+  captureObservabilityError,
+  setObservabilityUser,
+} from "../lib/observability";
+import {
   isSupabaseConfigured,
   supabase,
   supabaseConfigurationMessage,
@@ -32,6 +37,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    setObservabilityUser(session?.user.id ?? null);
+  }, [session?.user.id]);
+
+  useEffect(() => {
     if (!supabase) {
       setIsLoading(false);
       return;
@@ -48,17 +57,30 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setIsLoading(false);
 
       if (error) {
+        captureObservabilityError(error, {
+          operation: "auth.get_session",
+          route: "/account",
+        });
         setSession(null);
       }
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!isMounted) {
         return;
       }
 
+      addObservabilityBreadcrumb({
+        category: "auth",
+        message: "Auth state changed",
+        data: {
+          event,
+          hasSession: Boolean(nextSession),
+          route: "/account",
+        },
+      });
       setSession(nextSession);
       setIsLoading(false);
     });
@@ -83,14 +105,43 @@ export function AuthProvider({ children }: PropsWithChildren) {
           );
         }
 
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: {
-            shouldCreateUser: true,
+        addObservabilityBreadcrumb({
+          category: "auth",
+          message: "Email sign-in code requested",
+          data: {
+            action: "send_email_otp",
+            route: "/account",
           },
         });
 
-        if (error) {
+        try {
+          const { error } = await supabase.auth.signInWithOtp({
+            email,
+            options: {
+              shouldCreateUser: true,
+            },
+          });
+
+          if (error) {
+            throw error;
+          }
+
+          addObservabilityBreadcrumb({
+            category: "auth",
+            message: "Email sign-in code sent",
+            data: {
+              action: "send_email_otp",
+              route: "/account",
+            },
+          });
+        } catch (error) {
+          captureObservabilityError(error, {
+            operation: "auth.send_email_otp",
+            route: "/account",
+            context: {
+              action: "send_email_otp",
+            },
+          });
           throw error;
         }
       },
@@ -101,13 +152,42 @@ export function AuthProvider({ children }: PropsWithChildren) {
           );
         }
 
-        const { error } = await supabase.auth.verifyOtp({
-          email,
-          token,
-          type: "email",
+        addObservabilityBreadcrumb({
+          category: "auth",
+          message: "Email sign-in code verification started",
+          data: {
+            action: "verify_email_otp",
+            route: "/account",
+          },
         });
 
-        if (error) {
+        try {
+          const { error } = await supabase.auth.verifyOtp({
+            email,
+            token,
+            type: "email",
+          });
+
+          if (error) {
+            throw error;
+          }
+
+          addObservabilityBreadcrumb({
+            category: "auth",
+            message: "Email sign-in code verified",
+            data: {
+              action: "verify_email_otp",
+              route: "/account",
+            },
+          });
+        } catch (error) {
+          captureObservabilityError(error, {
+            operation: "auth.verify_email_otp",
+            route: "/account",
+            context: {
+              action: "verify_email_otp",
+            },
+          });
           throw error;
         }
       },
@@ -116,9 +196,38 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return;
         }
 
-        const { error } = await supabase.auth.signOut();
+        addObservabilityBreadcrumb({
+          category: "auth",
+          message: "Sign out started",
+          data: {
+            action: "sign_out",
+            route: "/account",
+          },
+        });
 
-        if (error) {
+        try {
+          const { error } = await supabase.auth.signOut();
+
+          if (error) {
+            throw error;
+          }
+
+          addObservabilityBreadcrumb({
+            category: "auth",
+            message: "Sign out completed",
+            data: {
+              action: "sign_out",
+              route: "/account",
+            },
+          });
+        } catch (error) {
+          captureObservabilityError(error, {
+            operation: "auth.sign_out",
+            route: "/account",
+            context: {
+              action: "sign_out",
+            },
+          });
           throw error;
         }
       },

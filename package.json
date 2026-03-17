@@ -22,7 +22,10 @@
   },
   "homepage": "https://github.com/thenahum/cuelist#readme",
   "dependencies": {
+    "@sentry/react": "^10.43.0",
     "@supabase/supabase-js": "^2.99.1",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "dexie": "^4.3.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

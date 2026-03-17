@@ -3,9 +3,12 @@ import { createRoot } from "react-dom/client";
 
 import { App } from "./app/app";
 import { bootstrapApp } from "./app/bootstrap";
+import { initializeSentry } from "./lib/observability";
 import "./index.css";
 
 async function start() {
+  initializeSentry();
+
   const { repositories, syncService } = await bootstrapApp();
   const rootElement = document.getElementById("root");
 

@@ -6,6 +6,10 @@ import { useSyncService } from "../../app/sync-context";
 import { PageContentStack } from "../../components/page-content-stack";
 import { PageShell } from "../../components/page-shell";
 import { StatusCard } from "../../components/status-card";
+import {
+  addObservabilityBreadcrumb,
+  captureObservabilityError,
+} from "../../lib/observability";
 
 interface AccountStats {
   songs: number;
@@ -14,6 +18,7 @@ interface AccountStats {
 }
 
 type AuthStep = "email" | "code";
+const accountRoute = "/account";
 
 export function AccountPage() {
   const repositories = useRepositories();
@@ -231,11 +236,37 @@ export function AccountPage() {
     setIsSyncing(true);
 
     try {
+      addObservabilityBreadcrumb({
+        category: "sync",
+        message: "Cloud sync push started",
+        data: {
+          action: "push_local_to_cloud",
+          route: accountRoute,
+          userId: user.id,
+        },
+      });
       await syncService.pushLocalToCloud(user.id);
       const nextLastSyncAt = await syncService.getLastSyncAt(user.id);
       setLastSyncedAt(nextLastSyncAt ?? null);
+      addObservabilityBreadcrumb({
+        category: "sync",
+        message: "Cloud sync push completed",
+        data: {
+          action: "push_local_to_cloud",
+          route: accountRoute,
+          userId: user.id,
+        },
+      });
       setFeedback("Local data pushed to Supabase.");
     } catch (syncError) {
+      captureObservabilityError(syncError, {
+        operation: "sync.push_local_to_cloud",
+        route: accountRoute,
+        context: {
+          action: "push_local_to_cloud",
+          userId: user.id,
+        },
+      });
       setError(
         syncError instanceof Error ? syncError.message : "Unable to push local data.",
       );
@@ -254,12 +285,38 @@ export function AccountPage() {
     setIsSyncing(true);
 
     try {
+      addObservabilityBreadcrumb({
+        category: "sync",
+        message: "Cloud sync pull started",
+        data: {
+          action: "pull_cloud_to_local",
+          route: accountRoute,
+          userId: user.id,
+        },
+      });
       await syncService.pullCloudToLocal(user.id);
       await loadStats();
       const nextLastSyncAt = await syncService.getLastSyncAt(user.id);
       setLastSyncedAt(nextLastSyncAt ?? null);
+      addObservabilityBreadcrumb({
+        category: "sync",
+        message: "Cloud sync pull completed",
+        data: {
+          action: "pull_cloud_to_local",
+          route: accountRoute,
+          userId: user.id,
+        },
+      });
       setFeedback("Cloud data pulled into local IndexedDB.");
     } catch (syncError) {
+      captureObservabilityError(syncError, {
+        operation: "sync.pull_cloud_to_local",
+        route: accountRoute,
+        context: {
+          action: "pull_cloud_to_local",
+          userId: user.id,
+        },
+      });
       setError(
         syncError instanceof Error ? syncError.message : "Unable to pull cloud data.",
       );

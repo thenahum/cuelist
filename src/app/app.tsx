@@ -1,8 +1,12 @@
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { AuthProvider } from "./auth-context";
 import { RouterProvider } from "react-router-dom";
 
 import type { AppRepositories } from "../domain/repositories";
 import type { CloudSyncService } from "../domain/sync";
+import { sanitizeMonitoringEvent } from "../lib/observability";
+import { AppErrorBoundary } from "./app-error-boundary";
 import { RepositoryProvider } from "./repository-context";
 import { SyncProvider } from "./sync-context";
 import { ThemeProvider } from "./theme-context";
@@ -19,7 +23,13 @@ export function App({ repositories, syncService }: AppProps) {
       <AuthProvider>
         <SyncProvider syncService={syncService}>
           <RepositoryProvider repositories={repositories}>
-            <RouterProvider router={router} />
+            <AppErrorBoundary>
+              <>
+                <RouterProvider router={router} />
+                <Analytics beforeSend={sanitizeMonitoringEvent} />
+                <SpeedInsights beforeSend={sanitizeMonitoringEvent} />
+              </>
+            </AppErrorBoundary>
           </RepositoryProvider>
         </SyncProvider>
       </AuthProvider>
