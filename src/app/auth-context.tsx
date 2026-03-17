@@ -11,6 +11,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import {
   addObservabilityBreadcrumb,
   captureObservabilityError,
+  startObservabilityTimeout,
   setObservabilityUser,
 } from "../lib/observability";
 import {
@@ -31,6 +32,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const authRoute = "/account";
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
@@ -110,7 +112,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
           message: "Email sign-in code requested",
           data: {
             action: "send_email_otp",
-            route: "/account",
+            route: authRoute,
+          },
+        });
+
+        const startedAt = Date.now();
+        const clearTimeout = startObservabilityTimeout({
+          operation: "auth.send_email_otp",
+          route: authRoute,
+          timeoutMs: 12000,
+          message: "OTP send took longer than expected.",
+          context: {
+            action: "send_email_otp",
           },
         });
 
@@ -131,18 +144,35 @@ export function AuthProvider({ children }: PropsWithChildren) {
             message: "Email sign-in code sent",
             data: {
               action: "send_email_otp",
-              route: "/account",
+              durationMs: Date.now() - startedAt,
+              route: authRoute,
+              status: "success",
             },
           });
         } catch (error) {
+          addObservabilityBreadcrumb({
+            category: "auth",
+            level: "error",
+            message: "Email sign-in code failed",
+            data: {
+              action: "send_email_otp",
+              durationMs: Date.now() - startedAt,
+              route: authRoute,
+              status: "failure",
+            },
+          });
           captureObservabilityError(error, {
             operation: "auth.send_email_otp",
-            route: "/account",
+            route: authRoute,
             context: {
               action: "send_email_otp",
+              durationMs: Date.now() - startedAt,
+              status: "failure",
             },
           });
           throw error;
+        } finally {
+          clearTimeout();
         }
       },
       async verifyEmailOtp(email: string, token: string) {
@@ -157,7 +187,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
           message: "Email sign-in code verification started",
           data: {
             action: "verify_email_otp",
-            route: "/account",
+            route: authRoute,
+          },
+        });
+
+        const startedAt = Date.now();
+        const clearTimeout = startObservabilityTimeout({
+          operation: "auth.verify_email_otp",
+          route: authRoute,
+          timeoutMs: 12000,
+          message: "OTP verification took longer than expected.",
+          context: {
+            action: "verify_email_otp",
           },
         });
 
@@ -177,18 +218,35 @@ export function AuthProvider({ children }: PropsWithChildren) {
             message: "Email sign-in code verified",
             data: {
               action: "verify_email_otp",
-              route: "/account",
+              durationMs: Date.now() - startedAt,
+              route: authRoute,
+              status: "success",
             },
           });
         } catch (error) {
+          addObservabilityBreadcrumb({
+            category: "auth",
+            level: "error",
+            message: "Email sign-in code verification failed",
+            data: {
+              action: "verify_email_otp",
+              durationMs: Date.now() - startedAt,
+              route: authRoute,
+              status: "failure",
+            },
+          });
           captureObservabilityError(error, {
             operation: "auth.verify_email_otp",
-            route: "/account",
+            route: authRoute,
             context: {
               action: "verify_email_otp",
+              durationMs: Date.now() - startedAt,
+              status: "failure",
             },
           });
           throw error;
+        } finally {
+          clearTimeout();
         }
       },
       async signOut() {

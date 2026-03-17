@@ -12,12 +12,15 @@ import type {
 import {
   addObservabilityBreadcrumb,
   captureObservabilityError,
+  startObservabilityTimeout,
 } from "../../lib/observability";
 import { SetlistEditor } from "./setlist-editor";
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong.";
 }
+
+const saveObservabilityTimeoutMs = 12000;
 
 export function SetlistEditorPage() {
   const repositories = useRepositories();
@@ -95,15 +98,30 @@ export function SetlistEditorPage() {
   async function handleSave(nextSetlist: Setlist | SetlistDraft) {
     const isUpdating = "id" in nextSetlist;
     const operation = isUpdating ? "setlist.update" : "setlist.create";
+    const startedAt = Date.now();
+    const clearTimeout = startObservabilityTimeout({
+      operation,
+      route: location.pathname,
+      timeoutMs: saveObservabilityTimeoutMs,
+      message: isUpdating
+        ? "Setlist update took longer than expected."
+        : "Setlist save took longer than expected.",
+      context: {
+        action: operation,
+        setlistId: "id" in nextSetlist ? nextSetlist.id : undefined,
+      },
+    });
 
     addObservabilityBreadcrumb({
       category: "setlist",
       message: isUpdating ? "Setlist update started" : "Setlist save started",
       data: {
+        action: operation,
         operation,
         route: location.pathname,
         setlistId: "id" in nextSetlist ? nextSetlist.id : undefined,
         songEntryCount: nextSetlist.songEntries.length,
+        status: "start",
       },
     });
 
@@ -116,27 +134,48 @@ export function SetlistEditorPage() {
         category: "setlist",
         message: isUpdating ? "Setlist update completed" : "Setlist save completed",
         data: {
+          action: operation,
+          durationMs: Date.now() - startedAt,
           operation,
           route: location.pathname,
           setlistId: savedSetlist.id,
           songEntryCount: savedSetlist.songEntries.length,
+          status: "success",
         },
       });
 
       setSetlist(savedSetlist);
       navigate(`/setlists/${savedSetlist.id}${location.search}`, { replace: true });
     } catch (error) {
+      addObservabilityBreadcrumb({
+        category: "setlist",
+        level: "error",
+        message: isUpdating ? "Setlist update failed" : "Setlist save failed",
+        data: {
+          action: operation,
+          durationMs: Date.now() - startedAt,
+          operation,
+          route: location.pathname,
+          setlistId: "id" in nextSetlist ? nextSetlist.id : undefined,
+          status: "failure",
+        },
+      });
       captureObservabilityError(error, {
         operation,
         route: location.pathname,
         context: {
+          action: operation,
+          durationMs: Date.now() - startedAt,
           route: location.pathname,
           setlistId: "id" in nextSetlist ? nextSetlist.id : undefined,
           songEntryCount: nextSetlist.songEntries.length,
           defaultPerformanceTypeId: nextSetlist.defaultPerformanceTypeId,
+          status: "failure",
         },
       });
       throw error;
+    } finally {
+      clearTimeout();
     }
   }
 

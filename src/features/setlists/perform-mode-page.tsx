@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { useTheme } from "../../app/theme-context";
@@ -102,7 +102,6 @@ export function PerformModePage() {
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [songSheetScale, setSongSheetScale] = useState<SongSheetScale>("xlarge");
-  const lastObservedSetlistIdRef = useRef<string | null>(null);
   const [contentMode, setContentMode] = useState<ContentMode>(() => {
     if (typeof window === "undefined") {
       return "lyrics_chords";
@@ -118,20 +117,33 @@ export function PerformModePage() {
 
     async function loadPerformData() {
       if (!id) {
+        addObservabilityBreadcrumb({
+          category: "perform",
+          level: "error",
+          message: "Perform mode load failed",
+          data: {
+            action: "perform.enter",
+            route: "/setlists/unknown/perform",
+            status: "failure",
+          },
+        });
         setError("No setlist was selected.");
         setIsLoading(false);
         return;
       }
 
       setIsLoading(true);
+      const startedAt = Date.now();
 
       try {
         addObservabilityBreadcrumb({
           category: "perform",
           message: "Perform mode load started",
           data: {
+            action: "perform.enter",
             route: `/setlists/${id}/perform`,
             setlistId: id,
+            status: "start",
           },
         });
         const [loadedSetlist, loadedSongs, loadedPerformanceTypes] =
@@ -146,6 +158,18 @@ export function PerformModePage() {
         }
 
         if (!loadedSetlist) {
+          addObservabilityBreadcrumb({
+            category: "perform",
+            level: "error",
+            message: "Perform mode load failed",
+            data: {
+              action: "perform.enter",
+              durationMs: Date.now() - startedAt,
+              route: `/setlists/${id}/perform`,
+              setlistId: id,
+              status: "failure",
+            },
+          });
           setError("That setlist could not be found.");
           setSetlist(null);
           setSongs([]);
@@ -157,14 +181,41 @@ export function PerformModePage() {
         setSongs(loadedSongs);
         setPerformanceTypes(loadedPerformanceTypes);
         setError(null);
+        addObservabilityBreadcrumb({
+          category: "perform",
+          message: "Perform mode entered",
+          data: {
+            action: "perform.enter",
+            durationMs: Date.now() - startedAt,
+            route: `/setlists/${id}/perform`,
+            setlistId: loadedSetlist.id,
+            songEntryCount: loadedSetlist.songEntries.length,
+            status: "success",
+          },
+        });
       } catch (loadError) {
         if (!cancelled) {
+          addObservabilityBreadcrumb({
+            category: "perform",
+            level: "error",
+            message: "Perform mode load failed",
+            data: {
+              action: "perform.enter",
+              durationMs: Date.now() - startedAt,
+              route: `/setlists/${id}/perform`,
+              setlistId: id,
+              status: "failure",
+            },
+          });
           captureObservabilityError(loadError, {
             operation: "perform.enter",
             route: `/setlists/${id}/perform`,
             context: {
+              action: "perform.enter",
+              durationMs: Date.now() - startedAt,
               route: `/setlists/${id}/perform`,
               setlistId: id,
+              status: "failure",
             },
           });
           setError(toErrorMessage(loadError));
@@ -281,23 +332,6 @@ export function PerformModePage() {
   const songSheetContent = currentEntry
     ? getSongSheetContent(currentEntry.song)
     : undefined;
-
-  useEffect(() => {
-    if (!setlist || lastObservedSetlistIdRef.current === setlist.id) {
-      return;
-    }
-
-    lastObservedSetlistIdRef.current = setlist.id;
-    addObservabilityBreadcrumb({
-      category: "perform",
-      message: "Perform mode entered",
-      data: {
-        route: `/setlists/${setlist.id}/perform`,
-        setlistId: setlist.id,
-        songEntryCount: performEntries.length,
-      },
-    });
-  }, [performEntries.length, setlist]);
 
   if (isLoading) {
     return (
