@@ -31,6 +31,16 @@ interface CaptureObservabilityErrorOptions {
   context?: Record<string, unknown>;
 }
 
+interface CaptureObservabilityMessageOptions
+  extends CaptureObservabilityErrorOptions {
+  level?: BreadcrumbLevel;
+}
+
+interface ObservabilityTimeoutOptions extends CaptureObservabilityMessageOptions {
+  message?: string;
+  timeoutMs?: number;
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Object.prototype.toString.call(value) === "[object Object]";
 }
@@ -275,6 +285,92 @@ export function captureObservabilityError(
 
     scope.captureException(normalizeError(error));
   });
+}
+
+export function captureObservabilityMessage(
+  message: string,
+  {
+    context,
+    level = "warning",
+    operation,
+    route,
+  }: CaptureObservabilityMessageOptions,
+): void {
+  if (!isSentryEnabled()) {
+    return;
+  }
+
+  Sentry.withScope((scope) => {
+    scope.setLevel(level);
+    scope.setTag("operation", operation);
+
+    if (route) {
+      scope.setTag("route", sanitizeMonitoringUrl(route));
+    }
+
+    if (context) {
+      scope.setContext(
+        "cuelist",
+        sanitizeValue(context) as Record<string, unknown>,
+      );
+    }
+
+    scope.captureMessage(message);
+  });
+}
+
+export function startObservabilityTimeout({
+  context,
+  level = "warning",
+  message = "Operation exceeded expected duration.",
+  operation,
+  route,
+  timeoutMs = 10000,
+}: ObservabilityTimeoutOptions): () => void {
+  if (typeof window === "undefined" || timeoutMs <= 0) {
+    return () => {};
+  }
+
+  let isCleared = false;
+  const startedAt = Date.now();
+  const timeoutId = window.setTimeout(() => {
+    if (isCleared) {
+      return;
+    }
+
+    const durationMs = Date.now() - startedAt;
+    const timeoutContext = {
+      ...context,
+      durationMs,
+      status: "timeout",
+    };
+
+    addObservabilityBreadcrumb({
+      category: "timeout",
+      level,
+      message: "Operation exceeded expected duration",
+      data: {
+        operation,
+        route,
+        ...timeoutContext,
+      },
+    });
+    captureObservabilityMessage(message, {
+      context: timeoutContext,
+      level,
+      operation,
+      route,
+    });
+  }, timeoutMs);
+
+  return () => {
+    if (isCleared) {
+      return;
+    }
+
+    isCleared = true;
+    window.clearTimeout(timeoutId);
+  };
 }
 
 export function setObservabilityRoute(route: string): void {

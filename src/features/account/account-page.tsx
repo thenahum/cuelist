@@ -9,6 +9,7 @@ import { StatusCard } from "../../components/status-card";
 import {
   addObservabilityBreadcrumb,
   captureObservabilityError,
+  startObservabilityTimeout,
 } from "../../lib/observability";
 
 interface AccountStats {
@@ -19,6 +20,7 @@ interface AccountStats {
 
 type AuthStep = "email" | "code";
 const accountRoute = "/account";
+const syncObservabilityTimeoutMs = 15000;
 
 export function AccountPage() {
   const repositories = useRepositories();
@@ -235,6 +237,18 @@ export function AccountPage() {
     setFeedback(null);
     setIsSyncing(true);
 
+    const startedAt = Date.now();
+    const clearTimeout = startObservabilityTimeout({
+      operation: "sync.push_local_to_cloud",
+      route: accountRoute,
+      timeoutMs: syncObservabilityTimeoutMs,
+      message: "Push local to cloud took longer than expected.",
+      context: {
+        action: "push_local_to_cloud",
+        userId: user.id,
+      },
+    });
+
     try {
       addObservabilityBreadcrumb({
         category: "sync",
@@ -242,6 +256,7 @@ export function AccountPage() {
         data: {
           action: "push_local_to_cloud",
           route: accountRoute,
+          status: "start",
           userId: user.id,
         },
       });
@@ -253,17 +268,33 @@ export function AccountPage() {
         message: "Cloud sync push completed",
         data: {
           action: "push_local_to_cloud",
+          durationMs: Date.now() - startedAt,
           route: accountRoute,
+          status: "success",
           userId: user.id,
         },
       });
       setFeedback("Local data pushed to Supabase.");
     } catch (syncError) {
+      addObservabilityBreadcrumb({
+        category: "sync",
+        level: "error",
+        message: "Cloud sync push failed",
+        data: {
+          action: "push_local_to_cloud",
+          durationMs: Date.now() - startedAt,
+          route: accountRoute,
+          status: "failure",
+          userId: user.id,
+        },
+      });
       captureObservabilityError(syncError, {
         operation: "sync.push_local_to_cloud",
         route: accountRoute,
         context: {
           action: "push_local_to_cloud",
+          durationMs: Date.now() - startedAt,
+          status: "failure",
           userId: user.id,
         },
       });
@@ -271,6 +302,7 @@ export function AccountPage() {
         syncError instanceof Error ? syncError.message : "Unable to push local data.",
       );
     } finally {
+      clearTimeout();
       setIsSyncing(false);
     }
   }
@@ -284,6 +316,18 @@ export function AccountPage() {
     setFeedback(null);
     setIsSyncing(true);
 
+    const startedAt = Date.now();
+    const clearTimeout = startObservabilityTimeout({
+      operation: "sync.pull_cloud_to_local",
+      route: accountRoute,
+      timeoutMs: syncObservabilityTimeoutMs,
+      message: "Pull cloud to local took longer than expected.",
+      context: {
+        action: "pull_cloud_to_local",
+        userId: user.id,
+      },
+    });
+
     try {
       addObservabilityBreadcrumb({
         category: "sync",
@@ -291,6 +335,7 @@ export function AccountPage() {
         data: {
           action: "pull_cloud_to_local",
           route: accountRoute,
+          status: "start",
           userId: user.id,
         },
       });
@@ -303,17 +348,33 @@ export function AccountPage() {
         message: "Cloud sync pull completed",
         data: {
           action: "pull_cloud_to_local",
+          durationMs: Date.now() - startedAt,
           route: accountRoute,
+          status: "success",
           userId: user.id,
         },
       });
       setFeedback("Cloud data pulled into local IndexedDB.");
     } catch (syncError) {
+      addObservabilityBreadcrumb({
+        category: "sync",
+        level: "error",
+        message: "Cloud sync pull failed",
+        data: {
+          action: "pull_cloud_to_local",
+          durationMs: Date.now() - startedAt,
+          route: accountRoute,
+          status: "failure",
+          userId: user.id,
+        },
+      });
       captureObservabilityError(syncError, {
         operation: "sync.pull_cloud_to_local",
         route: accountRoute,
         context: {
           action: "pull_cloud_to_local",
+          durationMs: Date.now() - startedAt,
+          status: "failure",
           userId: user.id,
         },
       });
@@ -321,6 +382,7 @@ export function AccountPage() {
         syncError instanceof Error ? syncError.message : "Unable to pull cloud data.",
       );
     } finally {
+      clearTimeout();
       setIsSyncing(false);
     }
   }
@@ -330,19 +392,70 @@ export function AccountPage() {
     setFeedback(null);
     setIsResetting(true);
 
+    const startedAt = Date.now();
+    const clearTimeout = startObservabilityTimeout({
+      operation: "sync.clear_local_data",
+      route: accountRoute,
+      timeoutMs: syncObservabilityTimeoutMs,
+      message: "Delete local data took longer than expected.",
+      context: {
+        action: "clear_local_data",
+      },
+    });
+
     try {
+      addObservabilityBreadcrumb({
+        category: "sync",
+        message: "Delete local data started",
+        data: {
+          action: "clear_local_data",
+          route: accountRoute,
+          status: "start",
+        },
+      });
       await syncService.clearLocalData();
       await loadStats();
       setLastSyncedAt(null);
       setIsResetModalOpen(false);
+      addObservabilityBreadcrumb({
+        category: "sync",
+        message: "Delete local data completed",
+        data: {
+          action: "clear_local_data",
+          durationMs: Date.now() - startedAt,
+          route: accountRoute,
+          status: "success",
+        },
+      });
       setFeedback("All local data was deleted from this device.");
     } catch (resetError) {
+      addObservabilityBreadcrumb({
+        category: "sync",
+        level: "error",
+        message: "Delete local data failed",
+        data: {
+          action: "clear_local_data",
+          durationMs: Date.now() - startedAt,
+          route: accountRoute,
+          status: "failure",
+        },
+      });
+      captureObservabilityError(resetError, {
+        operation: "sync.clear_local_data",
+        route: accountRoute,
+        context: {
+          action: "clear_local_data",
+          durationMs: Date.now() - startedAt,
+          status: "failure",
+        },
+      });
       setError(
         resetError instanceof Error
           ? resetError.message
           : "Unable to delete local data.",
       );
     } finally {
+      clearTimeout();
       setIsResetting(false);
     }
   }

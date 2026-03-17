@@ -7,6 +7,7 @@ import type { PerformanceType, Song, SongDraft } from "../../domain/models";
 import {
   addObservabilityBreadcrumb,
   captureObservabilityError,
+  startObservabilityTimeout,
 } from "../../lib/observability";
 import { SongEditor } from "./song-editor";
 
@@ -14,6 +15,8 @@ interface SongNavigationState {
   backTo?: string;
   backLabel?: string;
 }
+
+const saveObservabilityTimeoutMs = 12000;
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong.";
@@ -82,14 +85,29 @@ export function SongEditorPage() {
   async function handleSave(nextSong: Song | SongDraft) {
     const isUpdating = "id" in nextSong;
     const operation = isUpdating ? "song.update" : "song.create";
+    const startedAt = Date.now();
+    const clearTimeout = startObservabilityTimeout({
+      operation,
+      route: location.pathname,
+      timeoutMs: saveObservabilityTimeoutMs,
+      message: isUpdating
+        ? "Song update took longer than expected."
+        : "Song save took longer than expected.",
+      context: {
+        action: operation,
+        songId: "id" in nextSong ? nextSong.id : undefined,
+      },
+    });
 
     addObservabilityBreadcrumb({
       category: "song",
       message: isUpdating ? "Song update started" : "Song save started",
       data: {
+        action: operation,
         operation,
         route: location.pathname,
         songId: "id" in nextSong ? nextSong.id : undefined,
+        status: "start",
       },
     });
 
@@ -102,10 +120,13 @@ export function SongEditorPage() {
         category: "song",
         message: isUpdating ? "Song update completed" : "Song save completed",
         data: {
+          action: operation,
+          durationMs: Date.now() - startedAt,
           operation,
           route: location.pathname,
           songId: savedSong.id,
           performanceProfileCount: savedSong.performanceProfiles.length,
+          status: "success",
         },
       });
 
@@ -115,17 +136,35 @@ export function SongEditorPage() {
         state: navigationState ?? undefined,
       });
     } catch (error) {
+      addObservabilityBreadcrumb({
+        category: "song",
+        level: "error",
+        message: isUpdating ? "Song update failed" : "Song save failed",
+        data: {
+          action: operation,
+          durationMs: Date.now() - startedAt,
+          operation,
+          route: location.pathname,
+          songId: "id" in nextSong ? nextSong.id : undefined,
+          status: "failure",
+        },
+      });
       captureObservabilityError(error, {
         operation,
         route: location.pathname,
         context: {
+          action: operation,
+          durationMs: Date.now() - startedAt,
           route: location.pathname,
           songId: "id" in nextSong ? nextSong.id : undefined,
           performanceProfileCount: nextSong.performanceProfiles.length,
           sourceType: nextSong.sourceType,
+          status: "failure",
         },
       });
       throw error;
+    } finally {
+      clearTimeout();
     }
   }
 
