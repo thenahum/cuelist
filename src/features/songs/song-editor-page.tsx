@@ -4,6 +4,10 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useRepositories } from "../../app/repository-context";
 import { PageShell } from "../../components/page-shell";
 import type { PerformanceType, Song, SongDraft } from "../../domain/models";
+import {
+  addObservabilityBreadcrumb,
+  captureObservabilityError,
+} from "../../lib/observability";
 import { SongEditor } from "./song-editor";
 
 interface SongNavigationState {
@@ -76,16 +80,53 @@ export function SongEditorPage() {
   }, [id, isCreating, repositories.performanceTypes, repositories.songs]);
 
   async function handleSave(nextSong: Song | SongDraft) {
-    const savedSong =
-      "id" in nextSong
+    const isUpdating = "id" in nextSong;
+    const operation = isUpdating ? "song.update" : "song.create";
+
+    addObservabilityBreadcrumb({
+      category: "song",
+      message: isUpdating ? "Song update started" : "Song save started",
+      data: {
+        operation,
+        route: location.pathname,
+        songId: "id" in nextSong ? nextSong.id : undefined,
+      },
+    });
+
+    try {
+      const savedSong = isUpdating
         ? await repositories.songs.update(nextSong)
         : await repositories.songs.create(nextSong);
 
-    setSong(savedSong);
-    navigate(`/songs/${savedSong.id}${location.search}`, {
-      replace: true,
-      state: navigationState ?? undefined,
-    });
+      addObservabilityBreadcrumb({
+        category: "song",
+        message: isUpdating ? "Song update completed" : "Song save completed",
+        data: {
+          operation,
+          route: location.pathname,
+          songId: savedSong.id,
+          performanceProfileCount: savedSong.performanceProfiles.length,
+        },
+      });
+
+      setSong(savedSong);
+      navigate(`/songs/${savedSong.id}${location.search}`, {
+        replace: true,
+        state: navigationState ?? undefined,
+      });
+    } catch (error) {
+      captureObservabilityError(error, {
+        operation,
+        route: location.pathname,
+        context: {
+          route: location.pathname,
+          songId: "id" in nextSong ? nextSong.id : undefined,
+          performanceProfileCount: nextSong.performanceProfiles.length,
+          sourceType: nextSong.sourceType,
+        },
+      });
+      throw error;
+    }
   }
 
   async function handleDelete(nextSong: Song) {

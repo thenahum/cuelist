@@ -6,6 +6,7 @@ import {
   useLocation,
 } from "react-router-dom";
 
+import { RouteObservability } from "../app/route-observability";
 import { useTheme } from "../app/theme-context";
 import { PageShell } from "./page-shell";
 
@@ -56,6 +57,7 @@ export function AppShell() {
   if (isPerformMode) {
     return (
       <div className="min-h-svh bg-transparent text-slate-100">
+        <RouteObservability />
         <main className="min-h-svh">
           <Outlet />
         </main>
@@ -65,6 +67,7 @@ export function AppShell() {
 
   return (
     <div className="cu-app-shell">
+      <RouteObservability />
       <div className="flex min-h-svh flex-col pb-28 pt-4">
         {hideShellHeader ? null : (
           <PageShell>
