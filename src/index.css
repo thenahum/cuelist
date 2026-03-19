@@ -928,6 +928,12 @@ textarea {
   box-shadow: var(--elevation-1);
 }
 
+.cu-perform-reader-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 0.85rem;
+}
+
 .cu-perform-song-sheet {
   height: 100%;
   overflow: auto;
@@ -1084,6 +1090,13 @@ textarea {
   box-shadow: var(--elevation-1);
 }
 
+.cu-perform-set-bar-copy-group {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+  flex: 1;
+}
+
 .cu-perform-set-bar-title {
   color: var(--text-primary);
   font-size: 0.93rem;
@@ -1093,6 +1106,87 @@ textarea {
 .cu-perform-set-bar-copy {
   color: var(--text-muted);
   font-size: 0.84rem;
+}
+
+.cu-perform-sheet-trigger {
+  display: none;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  border-radius: 999px;
+  padding: 0.58rem 0.8rem;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-weight: 700;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.cu-perform-sheet-trigger:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.cu-perform-sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+}
+
+.cu-perform-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(12, 16, 21, 0.24);
+  backdrop-filter: blur(8px);
+}
+
+.cu-perform-sheet {
+  position: absolute;
+  right: var(--page-gutter);
+  bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  left: var(--page-gutter);
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+  max-height: min(68svh, 32rem);
+  overflow: auto;
+  width: min(32rem, calc(100vw - (var(--page-gutter) * 2)));
+  border: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--surface-elevated) 96%, transparent);
+  border-radius: 1.9rem;
+  padding: 1rem;
+  backdrop-filter: blur(30px);
+  box-shadow: var(--elevation-3);
+}
+
+.cu-perform-sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cu-perform-sheet-groups {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.cu-perform-sheet-group {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.cu-perform-sheet-label {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .cu-perform-nav {
@@ -1181,13 +1275,30 @@ textarea {
     padding-bottom: calc(env(safe-area-inset-bottom) + 12.25rem);
   }
 
+  .cu-perform-header {
+    padding: 1rem;
+  }
+
+  .cu-perform-header-main {
+    min-width: 0;
+  }
+
   .cu-perform-song-title {
     font-size: 1.82rem;
+  }
+
+  .cu-perform-pill-desktop-only,
+  .cu-perform-header-controls {
+    display: none;
   }
 
   .cu-perform-reader {
     min-height: 20rem;
     padding: 1rem;
+  }
+
+  .cu-perform-sheet-trigger {
+    display: inline-flex;
   }
 
   .cu-perform-footer {
@@ -1408,6 +1519,7 @@ textarea {
   border-color: var(--border-strong);
 }
 
+.cu-setlist-icon-button,
 .cu-setlist-drag-handle {
   display: inline-flex;
   align-items: center;
@@ -1418,16 +1530,32 @@ textarea {
   background: var(--surface);
   color: var(--text-secondary);
   border-radius: 999px;
-  cursor: grab;
   transition:
     border-color 180ms ease,
     color 180ms ease,
     background 180ms ease;
 }
 
+.cu-setlist-icon-button:hover,
 .cu-setlist-drag-handle:hover {
   border-color: var(--border-strong);
   color: var(--text-primary);
+}
+
+.cu-setlist-icon-button:active {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.cu-setlist-icon-button {
+  cursor: pointer;
+}
+
+.cu-setlist-drag-handle {
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .cu-setlist-drag-handle:active {

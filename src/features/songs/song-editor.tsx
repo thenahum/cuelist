@@ -9,6 +9,7 @@ import type {
   SongPerformanceProfile,
   SourceType,
 } from "../../domain/models";
+import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock";
 import { createId } from "../../shared/id";
 import { PerformanceProfileChip } from "./performance-profile-chip";
 import {
@@ -166,9 +167,12 @@ export function SongEditor({
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const songSheetEditorRef = useRef<HTMLTextAreaElement | null>(null);
+  const shouldKeepScreenAwake = isExistingSong && !isEditMode;
 
   const scaleSteps: SongSheetScale[] = ["standard", "large", "xlarge"];
   const currentScaleIndex = scaleSteps.indexOf(songSheetScale);
+
+  useScreenWakeLock(shouldKeepScreenAwake);
 
   useEffect(() => {
     setFormState(createFormState(song));
@@ -778,7 +782,7 @@ heartbeat in the [G]kick drum`}
                 </div>
               </div>
 
-              {song ? (
+              {song && isEditMode ? (
                 <div className="border-t border-[var(--border)] pt-4">
                   <button
                     type="button"
