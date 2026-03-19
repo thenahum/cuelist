@@ -238,6 +238,7 @@ export function SetlistEditor({
   const songPickerInputRef = useRef<HTMLInputElement | null>(null);
   const songEntryCardRefs = useRef(new Map<string, HTMLElement>());
   const songEntryHandleRefs = useRef(new Map<string, HTMLElement>());
+  const songEntryMenuRefs = useRef(new Map<string, HTMLElement>());
   const dragStateRef = useRef<EntryDragState | null>(null);
   const shouldKeepScreenAwake = isExistingSetlist && !isEditMode;
 
@@ -262,6 +263,43 @@ export function SetlistEditor({
   useEffect(() => {
     dragStateRef.current = dragState;
   }, [dragState]);
+
+  useEffect(() => {
+    if (!openEntryMenuId) {
+      return;
+    }
+
+    const activeMenuId = openEntryMenuId;
+
+    function handleDocumentPointerDown(event: PointerEvent) {
+      const menuElement = songEntryMenuRefs.current.get(activeMenuId);
+
+      if (!menuElement) {
+        setOpenEntryMenuId(null);
+        return;
+      }
+
+      if (event.target instanceof Node && menuElement.contains(event.target)) {
+        return;
+      }
+
+      setOpenEntryMenuId(null);
+    }
+
+    function handleDocumentKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpenEntryMenuId(null);
+      }
+    }
+
+    document.addEventListener("pointerdown", handleDocumentPointerDown);
+    document.addEventListener("keydown", handleDocumentKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handleDocumentPointerDown);
+      document.removeEventListener("keydown", handleDocumentKeyDown);
+    };
+  }, [openEntryMenuId]);
 
   useEffect(() => {
     if (!pendingDragRequest) {
@@ -587,6 +625,15 @@ export function SetlistEditor({
     songEntryHandleRefs.current.delete(songEntryId);
   }
 
+  function setSongEntryMenuRef(songEntryId: string, element: HTMLElement | null) {
+    if (element) {
+      songEntryMenuRefs.current.set(songEntryId, element);
+      return;
+    }
+
+    songEntryMenuRefs.current.delete(songEntryId);
+  }
+
   function handleDragHandlePointerDown(
     event: ReactPointerEvent<HTMLButtonElement>,
     songEntryId: string,
@@ -857,7 +904,7 @@ export function SetlistEditor({
 
             <div
               className={[
-                "overflow-hidden",
+                openEntryMenuId === songEntry.id ? "overflow-visible" : "overflow-hidden",
                 shouldDisableCollapseTransitions
                   ? ""
                   : "transition-[margin,max-height,opacity] duration-200 ease-out",
@@ -875,7 +922,14 @@ export function SetlistEditor({
                   Change song
                 </button>
 
-                <div className="relative ml-auto">
+                <div
+                  ref={
+                    isPreview
+                      ? undefined
+                      : (element) => setSongEntryMenuRef(songEntry.id, element)
+                  }
+                  className="relative ml-auto"
+                >
                   <button
                     type="button"
                     aria-label={`More actions for slot ${displayIndex}`}
@@ -892,27 +946,19 @@ export function SetlistEditor({
                   </button>
 
                   {openEntryMenuId === songEntry.id ? (
-                    <>
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-full z-20 mt-2 min-w-40 rounded-[1.15rem] border border-[var(--border-strong)] bg-[color-mix(in_srgb,var(--surface-elevated)_96%,transparent)] p-2 shadow-[0_18px_40px_rgba(5,8,14,0.2)] backdrop-blur-xl"
+                    >
                       <button
                         type="button"
-                        aria-label="Close entry actions"
-                        className="fixed inset-0 z-10 border-0 bg-transparent"
-                        onClick={() => setOpenEntryMenuId(null)}
-                      />
-                      <div
-                        role="menu"
-                        className="absolute right-0 top-full z-20 mt-2 min-w-40 rounded-[1.15rem] border border-[var(--border-strong)] bg-[color-mix(in_srgb,var(--surface-elevated)_96%,transparent)] p-2 shadow-[0_18px_40px_rgba(5,8,14,0.2)] backdrop-blur-xl"
+                        role="menuitem"
+                        onClick={() => removeSongEntry(songEntry.id)}
+                        className="flex w-full items-center justify-between rounded-[0.95rem] px-3 py-2.5 text-left text-sm font-medium text-[var(--color-destructive-bg)] transition hover:bg-[color-mix(in_srgb,var(--color-destructive)_10%,transparent)]"
                       >
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => removeSongEntry(songEntry.id)}
-                          className="flex w-full items-center justify-between rounded-[0.95rem] px-3 py-2.5 text-left text-sm font-medium text-[var(--color-destructive-bg)] transition hover:bg-[color-mix(in_srgb,var(--color-destructive)_10%,transparent)]"
-                        >
-                          Remove song
-                        </button>
-                      </div>
-                    </>
+                        Remove song
+                      </button>
+                    </div>
                   ) : null}
                 </div>
 
