@@ -16,6 +16,7 @@ import type {
   SetlistSongEntry,
   Song,
 } from "../../domain/models";
+import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock";
 import { createId } from "../../shared/id";
 import { PerformanceProfileChip } from "../songs/performance-profile-chip";
 import {
@@ -238,6 +239,9 @@ export function SetlistEditor({
   const songEntryCardRefs = useRef(new Map<string, HTMLElement>());
   const songEntryHandleRefs = useRef(new Map<string, HTMLElement>());
   const dragStateRef = useRef<EntryDragState | null>(null);
+  const shouldKeepScreenAwake = isExistingSetlist && !isEditMode;
+
+  useScreenWakeLock(shouldKeepScreenAwake);
 
   useEffect(() => {
     setFormState(createFormState(setlist));

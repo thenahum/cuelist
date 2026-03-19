@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { useTheme } from "../../app/theme-context";
 import { useRepositories } from "../../app/repository-context";
 import type { PerformanceType, Setlist, Song } from "../../domain/models";
+import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock";
 import {
   addObservabilityBreadcrumb,
   captureObservabilityError,
@@ -355,6 +356,10 @@ export function PerformModePage() {
   const songSheetContent = currentEntry
     ? getSongSheetContent(currentEntry.song)
     : undefined;
+  const shouldKeepScreenAwake =
+    !isLoading && !error && Boolean(setlist) && performEntries.length > 0;
+
+  useScreenWakeLock(shouldKeepScreenAwake);
 
   if (isLoading) {
     return (
