@@ -778,7 +778,7 @@ heartbeat in the [G]kick drum`}
                 </div>
               </div>
 
-              {song ? (
+              {song && isEditMode ? (
                 <div className="border-t border-[var(--border)] pt-4">
                   <button
                     type="button"
