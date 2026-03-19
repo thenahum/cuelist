@@ -1408,6 +1408,7 @@ textarea {
   border-color: var(--border-strong);
 }
 
+.cu-setlist-icon-button,
 .cu-setlist-drag-handle {
   display: inline-flex;
   align-items: center;
@@ -1418,16 +1419,32 @@ textarea {
   background: var(--surface);
   color: var(--text-secondary);
   border-radius: 999px;
-  cursor: grab;
   transition:
     border-color 180ms ease,
     color 180ms ease,
     background 180ms ease;
 }
 
+.cu-setlist-icon-button:hover,
 .cu-setlist-drag-handle:hover {
   border-color: var(--border-strong);
   color: var(--text-primary);
+}
+
+.cu-setlist-icon-button:active {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.cu-setlist-icon-button {
+  cursor: pointer;
+}
+
+.cu-setlist-drag-handle {
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .cu-setlist-drag-handle:active {
