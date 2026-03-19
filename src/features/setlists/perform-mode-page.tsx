@@ -91,6 +91,24 @@ function buildPerformEntries(
   );
 }
 
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={open ? "h-4 w-4 rotate-180 transition" : "h-4 w-4 transition"}
+    >
+      <path
+        d="m6 9 6 6 6-6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function PerformModePage() {
   const { id } = useParams<{ id: string }>();
   const repositories = useRepositories();
@@ -102,6 +120,7 @@ export function PerformModePage() {
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [songSheetScale, setSongSheetScale] = useState<SongSheetScale>("xlarge");
+  const [isControlsSheetOpen, setIsControlsSheetOpen] = useState(false);
   const [contentMode, setContentMode] = useState<ContentMode>(() => {
     if (typeof window === "undefined") {
       return "lyrics_chords";
@@ -299,6 +318,10 @@ export function PerformModePage() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsControlsSheetOpen(false);
+      }
+
       if (event.key === "ArrowRight" || event.key === " ") {
         event.preventDefault();
         setCurrentIndex((current) =>
@@ -416,27 +439,18 @@ export function PerformModePage() {
               <span className="cu-setlist-meta-pill">
                 {currentEntry.effectivePerformanceTypeName}
               </span>
-              <span className="cu-setlist-meta-pill">
+              <span className="cu-setlist-meta-pill cu-perform-pill-desktop-only">
                 {noteSourceLabel(currentEntry.resolvedNoteSource)}
               </span>
               {nextEntry ? (
-                <span className="cu-setlist-meta-pill">Next: {nextEntry.song.title}</span>
+                <span className="cu-setlist-meta-pill cu-perform-pill-desktop-only">
+                  Next: {nextEntry.song.title}
+                </span>
               ) : null}
             </div>
           </div>
 
           <div className="cu-perform-header-controls">
-            {currentEntry.song.externalTabsUrl ? (
-              <a
-                href={currentEntry.song.externalTabsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="cu-external-tabs-button"
-              >
-                Open Tabs ↗
-              </a>
-            ) : null}
-
             <div className="cu-mini-segmented" role="group" aria-label="Song sheet display">
               <button
                 type="button"
@@ -524,6 +538,19 @@ export function PerformModePage() {
 
         <div className="cu-perform-layout">
           <section className="cu-perform-reader">
+            {currentEntry.song.externalTabsUrl ? (
+              <div className="cu-perform-reader-actions">
+                <a
+                  href={currentEntry.song.externalTabsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="cu-external-tabs-button"
+                >
+                  Open Tabs ↗
+                </a>
+              </div>
+            ) : null}
+
             <SongSheetRenderer
               content={songSheetContent}
               showChords={contentMode === "lyrics_chords"}
@@ -594,10 +621,23 @@ export function PerformModePage() {
       <div className="cu-perform-footer">
         <div className="cu-perform-footer-inner">
           <div className="cu-perform-set-bar">
-            <span className="cu-perform-set-bar-title">{setlist.title}</span>
-            <span className="cu-perform-set-bar-copy">
-              {setlist.venue || "No venue"} · {formatSetlistDate(setlist.performanceDate)}
-            </span>
+            <div className="cu-perform-set-bar-copy-group">
+              <span className="cu-perform-set-bar-title">{setlist.title}</span>
+              <span className="cu-perform-set-bar-copy">
+                {setlist.venue || "No venue"} · {formatSetlistDate(setlist.performanceDate)}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsControlsSheetOpen((current) => !current)}
+              aria-expanded={isControlsSheetOpen}
+              aria-controls="perform-controls-sheet"
+              className="cu-perform-sheet-trigger"
+            >
+              Display
+              <ChevronIcon open={isControlsSheetOpen} />
+            </button>
           </div>
 
           <div className="cu-perform-nav">
@@ -629,6 +669,133 @@ export function PerformModePage() {
           </div>
         </div>
       </div>
+
+      {isControlsSheetOpen ? (
+        <div className="cu-perform-sheet-layer">
+          <button
+            type="button"
+            aria-label="Close perform controls"
+            className="cu-perform-sheet-backdrop"
+            onClick={() => setIsControlsSheetOpen(false)}
+          />
+          <section
+            id="perform-controls-sheet"
+            className="cu-perform-sheet"
+            aria-label="Perform display controls"
+          >
+            <div className="cu-perform-sheet-header">
+              <div>
+                <p className="cu-perform-panel-label">Display Controls</p>
+                <p className="cu-perform-panel-caption">
+                  Reader settings for perform mode
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsControlsSheetOpen(false)}
+                className="cu-setlist-icon-button"
+                aria-label="Close perform controls"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="cu-perform-sheet-groups">
+              <div className="cu-perform-sheet-group">
+                <p className="cu-perform-sheet-label">Display</p>
+                <div className="cu-mini-segmented" role="group" aria-label="Song sheet display">
+                  <button
+                    type="button"
+                    onClick={() => setContentMode("lyrics")}
+                    className={[
+                      "cu-mini-segment",
+                      contentMode === "lyrics" ? "cu-mini-segment-active" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    Lyrics
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContentMode("lyrics_chords")}
+                    className={[
+                      "cu-mini-segment",
+                      contentMode === "lyrics_chords" ? "cu-mini-segment-active" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    Chords
+                  </button>
+                </div>
+              </div>
+
+              <div className="cu-perform-sheet-group">
+                <p className="cu-perform-sheet-label">Text size</p>
+                <div className="cu-mini-segmented" role="group" aria-label="Perform mode text size">
+                  <button
+                    type="button"
+                    aria-label="Decrease text size"
+                    disabled={currentScaleIndex === 0}
+                    onClick={() =>
+                      setSongSheetScale(scaleSteps[Math.max(currentScaleIndex - 1, 0)])
+                    }
+                    className="cu-mini-segment"
+                  >
+                    A-
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Increase text size"
+                    disabled={currentScaleIndex === scaleSteps.length - 1}
+                    onClick={() =>
+                      setSongSheetScale(
+                        scaleSteps[Math.min(currentScaleIndex + 1, scaleSteps.length - 1)],
+                      )
+                    }
+                    className="cu-mini-segment"
+                  >
+                    A+
+                  </button>
+                </div>
+              </div>
+
+              <div className="cu-perform-sheet-group">
+                <p className="cu-perform-sheet-label">Theme</p>
+                <div className="cu-mini-segmented" role="group" aria-label="Perform mode theme">
+                  <button
+                    type="button"
+                    onClick={() => setMode("light")}
+                    className={[
+                      "cu-mini-segment",
+                      mode === "light" ? "cu-mini-segment-active" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    aria-pressed={mode === "light"}
+                  >
+                    Light
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode("dark")}
+                    className={[
+                      "cu-mini-segment",
+                      mode === "dark" ? "cu-mini-segment-active" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    aria-pressed={mode === "dark"}
+                  >
+                    Dark
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
