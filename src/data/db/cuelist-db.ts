@@ -1,6 +1,7 @@
 import Dexie, { type Table } from "dexie";
 
 import type { PerformanceType, Setlist, Song } from "../../domain/models";
+import { ensureSyncMetadata } from "../../domain/sync-metadata";
 import { getSongSheetContent } from "../../domain/song-sheet";
 
 interface AppMetaRecord {
@@ -93,6 +94,40 @@ export class CueListDexieDatabase extends Dexie {
             });
           }),
         );
+      });
+
+    this.version(4)
+      .stores({
+        performanceTypes: "id, name, isSeeded, createdAt, updatedAt",
+        songs: "id, title, artist, sourceType, createdAt, updatedAt, *tags",
+        setlists:
+          "id, title, venue, performanceDate, defaultPerformanceTypeId, createdAt, updatedAt",
+        meta: "key",
+      })
+      .upgrade(async (transaction) => {
+        const performanceTypesTable = transaction.table<PerformanceType, string>(
+          "performanceTypes",
+        );
+        const songsTable = transaction.table<Song, string>("songs");
+        const setlistsTable = transaction.table<Setlist, string>("setlists");
+
+        const [performanceTypes, songs, setlists] = await Promise.all([
+          performanceTypesTable.toArray(),
+          songsTable.toArray(),
+          setlistsTable.toArray(),
+        ]);
+
+        await Promise.all([
+          Promise.all(
+            performanceTypes.map((performanceType) =>
+              performanceTypesTable.put(ensureSyncMetadata(performanceType)),
+            ),
+          ),
+          Promise.all(songs.map((song) => songsTable.put(ensureSyncMetadata(song)))),
+          Promise.all(
+            setlists.map((setlist) => setlistsTable.put(ensureSyncMetadata(setlist))),
+          ),
+        ]);
       });
   }
 }

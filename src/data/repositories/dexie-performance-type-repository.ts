@@ -2,6 +2,11 @@ import type {
   PerformanceType,
   PerformanceTypeDraft,
 } from "../../domain/models";
+import {
+  createPendingSyncMetadata,
+  ensureSyncMetadata,
+  markEntityDirty,
+} from "../../domain/sync-metadata";
 import type { PerformanceTypeRepository } from "../../domain/repositories";
 import { createId } from "../../shared/id";
 import { nowIsoString } from "../../shared/time";
@@ -13,11 +18,13 @@ export class DexiePerformanceTypeRepository
   constructor(private readonly db: CueListDexieDatabase) {}
 
   async list(): Promise<PerformanceType[]> {
-    return this.db.performanceTypes.orderBy("name").toArray();
+    const performanceTypes = await this.db.performanceTypes.orderBy("name").toArray();
+    return performanceTypes.map(ensureSyncMetadata);
   }
 
   async getById(id: string): Promise<PerformanceType | undefined> {
-    return this.db.performanceTypes.get(id);
+    const performanceType = await this.db.performanceTypes.get(id);
+    return performanceType ? ensureSyncMetadata(performanceType) : undefined;
   }
 
   async create(draft: PerformanceTypeDraft): Promise<PerformanceType> {
@@ -26,6 +33,7 @@ export class DexiePerformanceTypeRepository
       id: createId("ptype"),
       createdAt: timestamp,
       updatedAt: timestamp,
+      syncMetadata: createPendingSyncMetadata(),
       ...draft,
     };
 
@@ -34,10 +42,7 @@ export class DexiePerformanceTypeRepository
   }
 
   async update(entity: PerformanceType): Promise<PerformanceType> {
-    const updatedEntity: PerformanceType = {
-      ...entity,
-      updatedAt: nowIsoString(),
-    };
+    const updatedEntity = markEntityDirty(ensureSyncMetadata(entity), nowIsoString());
 
     await this.db.performanceTypes.put(updatedEntity);
     return updatedEntity;

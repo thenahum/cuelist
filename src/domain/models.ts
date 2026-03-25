@@ -4,23 +4,35 @@ export type SourceType = "original" | "cover";
 
 export type ComfortLevel = "ready" | "almost_ready" | "maybe" | "you_suck";
 
+export type SyncStatus = "synced" | "pending_push" | "sync_failed";
+
+export interface SyncMetadata {
+  lastSyncedAt?: string;
+  syncStatus: SyncStatus;
+  syncError?: string;
+}
+
+export interface SyncableEntity {
+  createdAt: string;
+  updatedAt: string;
+  syncMetadata: SyncMetadata;
+}
+
 export interface SongPerformanceProfile {
   performanceTypeId: EntityId;
   comfortLevel: ComfortLevel;
   performanceNotes?: string;
 }
 
-export interface PerformanceType {
+export interface PerformanceType extends SyncableEntity {
   // TODO(sync): add future auth user_id ownership in the Supabase layer while
   // keeping these local IDs stable for offline-first usage.
   id: EntityId;
   name: string;
   isSeeded: boolean;
-  createdAt: string;
-  updatedAt: string;
 }
 
-export interface Song {
+export interface Song extends SyncableEntity {
   id: EntityId;
   title: string;
   artist?: string;
@@ -30,8 +42,6 @@ export interface Song {
   externalTabsUrl?: string;
   tags?: string[];
   performanceProfiles: SongPerformanceProfile[];
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface SetlistSongEntry {
@@ -42,7 +52,7 @@ export interface SetlistSongEntry {
   performanceNoteOverride?: string;
 }
 
-export interface Setlist {
+export interface Setlist extends SyncableEntity {
   id: EntityId;
   title: string;
   venue?: string;
@@ -50,18 +60,22 @@ export interface Setlist {
   notes?: string;
   defaultPerformanceTypeId?: EntityId;
   songEntries: SetlistSongEntry[];
-  createdAt: string;
-  updatedAt: string;
 }
 
 export type PerformanceTypeDraft = Omit<
   PerformanceType,
-  "id" | "createdAt" | "updatedAt"
+  "id" | "createdAt" | "updatedAt" | "syncMetadata"
 >;
 
-export type SongDraft = Omit<Song, "id" | "createdAt" | "updatedAt">;
+export type SongDraft = Omit<
+  Song,
+  "id" | "createdAt" | "updatedAt" | "syncMetadata"
+>;
 
-export type SetlistDraft = Omit<Setlist, "id" | "createdAt" | "updatedAt">;
+export type SetlistDraft = Omit<
+  Setlist,
+  "id" | "createdAt" | "updatedAt" | "syncMetadata"
+>;
 
 export interface SongFilters {
   query?: string;

@@ -1,4 +1,9 @@
 import type { Song, SongDraft, SongFilters } from "../../domain/models";
+import {
+  createPendingSyncMetadata,
+  ensureSyncMetadata,
+  markEntityDirty,
+} from "../../domain/sync-metadata";
 import type { SongRepository } from "../../domain/repositories";
 import { createId } from "../../shared/id";
 import { nowIsoString } from "../../shared/time";
@@ -12,7 +17,9 @@ export class DexieSongRepository implements SongRepository {
   constructor(private readonly db: CueListDexieDatabase) {}
 
   async list(filters?: SongFilters): Promise<Song[]> {
-    const songs = await this.db.songs.orderBy("updatedAt").reverse().toArray();
+    const songs = (await this.db.songs.orderBy("updatedAt").reverse().toArray()).map(
+      ensureSyncMetadata,
+    );
 
     if (!filters) {
       return songs;
@@ -69,7 +76,8 @@ export class DexieSongRepository implements SongRepository {
   }
 
   async getById(id: string): Promise<Song | undefined> {
-    return this.db.songs.get(id);
+    const song = await this.db.songs.get(id);
+    return song ? ensureSyncMetadata(song) : undefined;
   }
 
   async create(draft: SongDraft): Promise<Song> {
@@ -78,6 +86,7 @@ export class DexieSongRepository implements SongRepository {
       id: createId("song"),
       createdAt: timestamp,
       updatedAt: timestamp,
+      syncMetadata: createPendingSyncMetadata(),
       ...draft,
     };
 
@@ -86,10 +95,7 @@ export class DexieSongRepository implements SongRepository {
   }
 
   async update(entity: Song): Promise<Song> {
-    const updatedSong: Song = {
-      ...entity,
-      updatedAt: nowIsoString(),
-    };
+    const updatedSong = markEntityDirty(ensureSyncMetadata(entity), nowIsoString());
 
     await this.db.songs.put(updatedSong);
     return updatedSong;

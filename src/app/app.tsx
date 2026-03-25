@@ -7,7 +7,6 @@ import type { AppRepositories } from "../domain/repositories";
 import type { CloudSyncService } from "../domain/sync";
 import { sanitizeMonitoringEvent } from "../lib/observability";
 import { AppErrorBoundary } from "./app-error-boundary";
-import { RepositoryProvider } from "./repository-context";
 import { SyncProvider } from "./sync-context";
 import { ThemeProvider } from "./theme-context";
 import { router } from "./router";
@@ -21,16 +20,14 @@ export function App({ repositories, syncService }: AppProps) {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <SyncProvider syncService={syncService}>
-          <RepositoryProvider repositories={repositories}>
-            <AppErrorBoundary>
-              <>
-                <RouterProvider router={router} />
-                <Analytics beforeSend={sanitizeMonitoringEvent} />
-                <SpeedInsights beforeSend={sanitizeMonitoringEvent} />
-              </>
-            </AppErrorBoundary>
-          </RepositoryProvider>
+        <SyncProvider syncService={syncService} repositories={repositories}>
+          <AppErrorBoundary>
+            <>
+              <RouterProvider router={router} />
+              <Analytics beforeSend={sanitizeMonitoringEvent} />
+              <SpeedInsights beforeSend={sanitizeMonitoringEvent} />
+            </>
+          </AppErrorBoundary>
         </SyncProvider>
       </AuthProvider>
     </ThemeProvider>
