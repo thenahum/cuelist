@@ -1,7 +1,7 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 
 import { ensureSyncMetadata, isEntityDirty, markEntitySyncFailed, markEntitySynced } from "../../domain/sync-metadata";
-import type { PerformanceType, Setlist, Song, SyncableEntity } from "../../domain/models";
+import type { SyncableEntity } from "../../domain/models";
 import type { CloudSyncService } from "../../domain/sync";
 import type { CueListDexieDatabase } from "../db/cuelist-db";
 import { supabase } from "../../lib/supabase/client";
