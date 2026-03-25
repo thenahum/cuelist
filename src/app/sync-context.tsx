@@ -7,7 +7,12 @@ import {
   useState,
 } from "react";
 
-import type { AppRepositories } from "../domain/repositories";
+import type {
+  AppRepositories,
+  PerformanceTypeRepository,
+  SetlistRepository,
+  SongRepository,
+} from "../domain/repositories";
 import type { CloudSyncService } from "../domain/sync";
 import { RepositoryProvider } from "./repository-context";
 import { useAuth } from "./auth-context";
@@ -272,6 +277,74 @@ export function SyncProvider({
     void enqueueSync(runPull).catch(() => undefined);
   }
 
+  function createPerformanceTypeRepository(
+    repository: PerformanceTypeRepository,
+  ): PerformanceTypeRepository {
+    return {
+      list: () => repository.list(),
+      getById: (id) => repository.getById(id),
+      count: () => repository.count(),
+      create: async (draft) => {
+        const created = await repository.create(draft);
+        scheduleAutoPush();
+        return created;
+      },
+      update: async (entity) => {
+        const updated = await repository.update(entity);
+        scheduleAutoPush();
+        return updated;
+      },
+      delete: async (id) => {
+        await repository.delete(id);
+        await refreshSyncStateForUser();
+      },
+    };
+  }
+
+  function createSongRepository(repository: SongRepository): SongRepository {
+    return {
+      list: (filters) => repository.list(filters),
+      getById: (id) => repository.getById(id),
+      count: () => repository.count(),
+      create: async (draft) => {
+        const created = await repository.create(draft);
+        scheduleAutoPush();
+        return created;
+      },
+      update: async (entity) => {
+        const updated = await repository.update(entity);
+        scheduleAutoPush();
+        return updated;
+      },
+      delete: async (id) => {
+        await repository.delete(id);
+        await refreshSyncStateForUser();
+      },
+    };
+  }
+
+  function createSetlistRepository(repository: SetlistRepository): SetlistRepository {
+    return {
+      list: () => repository.list(),
+      getById: (id) => repository.getById(id),
+      count: () => repository.count(),
+      create: async (draft) => {
+        const created = await repository.create(draft);
+        scheduleAutoPush();
+        return created;
+      },
+      update: async (entity) => {
+        const updated = await repository.update(entity);
+        scheduleAutoPush();
+        return updated;
+      },
+      delete: async (id) => {
+        await repository.delete(id);
+        await refreshSyncStateForUser();
+      },
+    };
+  }
+
   useEffect(() => {
     void refreshSyncStateForUser(userId);
 
@@ -298,59 +371,13 @@ export function SyncProvider({
 
   const syncAwareRepositories = useMemo<AppRepositories>(
     () => ({
-      performanceTypes: {
-        ...repositories.performanceTypes,
-        async create(draft) {
-          const created = await repositories.performanceTypes.create(draft);
-          scheduleAutoPush();
-          return created;
-        },
-        async update(entity) {
-          const updated = await repositories.performanceTypes.update(entity);
-          scheduleAutoPush();
-          return updated;
-        },
-        async delete(id) {
-          await repositories.performanceTypes.delete(id);
-          await refreshSyncStateForUser();
-        },
-      },
-      songs: {
-        ...repositories.songs,
-        async create(draft) {
-          const created = await repositories.songs.create(draft);
-          scheduleAutoPush();
-          return created;
-        },
-        async update(entity) {
-          const updated = await repositories.songs.update(entity);
-          scheduleAutoPush();
-          return updated;
-        },
-        async delete(id) {
-          await repositories.songs.delete(id);
-          await refreshSyncStateForUser();
-        },
-      },
-      setlists: {
-        ...repositories.setlists,
-        async create(draft) {
-          const created = await repositories.setlists.create(draft);
-          scheduleAutoPush();
-          return created;
-        },
-        async update(entity) {
-          const updated = await repositories.setlists.update(entity);
-          scheduleAutoPush();
-          return updated;
-        },
-        async delete(id) {
-          await repositories.setlists.delete(id);
-          await refreshSyncStateForUser();
-        },
-      },
+      performanceTypes: createPerformanceTypeRepository(
+        repositories.performanceTypes,
+      ),
+      songs: createSongRepository(repositories.songs),
+      setlists: createSetlistRepository(repositories.setlists),
     }),
-    [repositories, userId],
+    [repositories],
   );
 
   const value = useMemo<SyncContextValue>(
