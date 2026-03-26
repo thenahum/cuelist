@@ -1,4 +1,9 @@
 import type { Setlist, SetlistDraft } from "../../domain/models";
+import {
+  createPendingSyncMetadata,
+  ensureSyncMetadata,
+  markEntityDirty,
+} from "../../domain/sync-metadata";
 import type { SetlistRepository } from "../../domain/repositories";
 import { createId } from "../../shared/id";
 import { nowIsoString } from "../../shared/time";
@@ -8,11 +13,13 @@ export class DexieSetlistRepository implements SetlistRepository {
   constructor(private readonly db: CueListDexieDatabase) {}
 
   async list(): Promise<Setlist[]> {
-    return this.db.setlists.orderBy("updatedAt").reverse().toArray();
+    const setlists = await this.db.setlists.orderBy("updatedAt").reverse().toArray();
+    return setlists.map(ensureSyncMetadata);
   }
 
   async getById(id: string): Promise<Setlist | undefined> {
-    return this.db.setlists.get(id);
+    const setlist = await this.db.setlists.get(id);
+    return setlist ? ensureSyncMetadata(setlist) : undefined;
   }
 
   async create(draft: SetlistDraft): Promise<Setlist> {
@@ -21,6 +28,7 @@ export class DexieSetlistRepository implements SetlistRepository {
       id: createId("setlist"),
       createdAt: timestamp,
       updatedAt: timestamp,
+      syncMetadata: createPendingSyncMetadata(),
       ...draft,
     };
 
@@ -29,10 +37,7 @@ export class DexieSetlistRepository implements SetlistRepository {
   }
 
   async update(entity: Setlist): Promise<Setlist> {
-    const updatedSetlist: Setlist = {
-      ...entity,
-      updatedAt: nowIsoString(),
-    };
+    const updatedSetlist = markEntityDirty(ensureSyncMetadata(entity), nowIsoString());
 
     await this.db.setlists.put(updatedSetlist);
     return updatedSetlist;

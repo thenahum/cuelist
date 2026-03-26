@@ -7,6 +7,7 @@ import type {
   SongPerformanceProfile,
   SourceType,
 } from "../../domain/models";
+import { createSyncedSyncMetadata } from "../../domain/sync-metadata";
 
 export interface PerformanceTypeRow {
   id: string;
@@ -153,6 +154,7 @@ export function mapSetlistEntriesToRows(
 
 export function mapPerformanceTypeRowToModel(
   row: PerformanceTypeRow,
+  lastSyncedAt = row.updated_at,
 ): PerformanceType {
   return {
     id: row.id,
@@ -160,6 +162,7 @@ export function mapPerformanceTypeRowToModel(
     isSeeded: row.is_seeded,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    syncMetadata: createSyncedSyncMetadata(lastSyncedAt),
   };
 }
 
@@ -167,6 +170,7 @@ export function mapSongRowsToModels(
   songRows: SongRow[],
   tagRows: SongTagRow[],
   profileRows: SongPerformanceProfileRow[],
+  lastSyncedAt?: string,
 ): Song[] {
   return songRows.map((row) => ({
     id: row.id,
@@ -188,12 +192,14 @@ export function mapSongRowsToModels(
       })),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    syncMetadata: createSyncedSyncMetadata(lastSyncedAt ?? row.updated_at),
   }));
 }
 
 export function mapSetlistRowsToModels(
   setlistRows: SetlistRow[],
   entryRows: SetlistEntryRow[],
+  lastSyncedAt?: string,
 ): Setlist[] {
   return setlistRows.map((row) => ({
     id: row.id,
@@ -214,5 +220,6 @@ export function mapSetlistRowsToModels(
       })),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    syncMetadata: createSyncedSyncMetadata(lastSyncedAt ?? row.updated_at),
   }));
 }

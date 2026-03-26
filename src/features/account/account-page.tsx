@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "../../app/auth-context";
 import { useRepositories } from "../../app/repository-context";
-import { useSyncService } from "../../app/sync-context";
+import { useSync } from "../../app/sync-context";
 import { PageContentStack } from "../../components/page-content-stack";
 import { PageShell } from "../../components/page-shell";
 import { StatusCard } from "../../components/status-card";
@@ -24,7 +24,13 @@ const syncObservabilityTimeoutMs = 15000;
 
 export function AccountPage() {
   const repositories = useRepositories();
-  const syncService = useSyncService();
+  const {
+    pullNow,
+    pushNow,
+    refreshSyncState,
+    state: syncState,
+    syncService,
+  } = useSync();
   const {
     configurationMessage,
     isConfigured,
@@ -46,8 +52,6 @@ export function AccountPage() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
@@ -79,36 +83,7 @@ export function AccountPage() {
     return () => {
       cancelled = true;
     };
-  }, [repositories]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadLastSync() {
-      if (!user) {
-        setLastSyncedAt(null);
-        return;
-      }
-
-      const nextLastSyncAt = await syncService.getLastSyncAt(user.id);
-
-      if (!cancelled) {
-        setLastSyncedAt(nextLastSyncAt ?? null);
-      }
-    }
-
-    void loadLastSync().catch((loadError) => {
-      if (!cancelled) {
-        setError(
-          loadError instanceof Error ? loadError.message : "Unable to load sync status.",
-        );
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [syncService, user]);
+  }, [repositories, syncState.lastSyncedAt]);
 
   useEffect(() => {
     if (!user) {
@@ -235,7 +210,6 @@ export function AccountPage() {
 
     setError(null);
     setFeedback(null);
-    setIsSyncing(true);
 
     const startedAt = Date.now();
     const clearTimeout = startObservabilityTimeout({
@@ -260,9 +234,7 @@ export function AccountPage() {
           userId: user.id,
         },
       });
-      await syncService.pushLocalToCloud(user.id);
-      const nextLastSyncAt = await syncService.getLastSyncAt(user.id);
-      setLastSyncedAt(nextLastSyncAt ?? null);
+      await pushNow();
       addObservabilityBreadcrumb({
         category: "sync",
         message: "Cloud sync push completed",
@@ -274,7 +246,7 @@ export function AccountPage() {
           userId: user.id,
         },
       });
-      setFeedback("Local data pushed to Supabase.");
+      setFeedback("Local changes synced to Supabase.");
     } catch (syncError) {
       addObservabilityBreadcrumb({
         category: "sync",
@@ -303,7 +275,6 @@ export function AccountPage() {
       );
     } finally {
       clearTimeout();
-      setIsSyncing(false);
     }
   }
 
@@ -314,7 +285,6 @@ export function AccountPage() {
 
     setError(null);
     setFeedback(null);
-    setIsSyncing(true);
 
     const startedAt = Date.now();
     const clearTimeout = startObservabilityTimeout({
@@ -339,10 +309,8 @@ export function AccountPage() {
           userId: user.id,
         },
       });
-      await syncService.pullCloudToLocal(user.id);
+      await pullNow();
       await loadStats();
-      const nextLastSyncAt = await syncService.getLastSyncAt(user.id);
-      setLastSyncedAt(nextLastSyncAt ?? null);
       addObservabilityBreadcrumb({
         category: "sync",
         message: "Cloud sync pull completed",
@@ -354,7 +322,7 @@ export function AccountPage() {
           userId: user.id,
         },
       });
-      setFeedback("Cloud data pulled into local IndexedDB.");
+      setFeedback("Cloud changes were checked and safe updates were pulled locally.");
     } catch (syncError) {
       addObservabilityBreadcrumb({
         category: "sync",
@@ -383,7 +351,6 @@ export function AccountPage() {
       );
     } finally {
       clearTimeout();
-      setIsSyncing(false);
     }
   }
 
@@ -414,8 +381,8 @@ export function AccountPage() {
         },
       });
       await syncService.clearLocalData();
+      await refreshSyncState();
       await loadStats();
-      setLastSyncedAt(null);
       setIsResetModalOpen(false);
       addObservabilityBreadcrumb({
         category: "sync",
@@ -460,12 +427,27 @@ export function AccountPage() {
     }
   }
 
+  const isSyncing = syncState.status === "syncing";
+  const syncStatus = !user
+    ? "Local only"
+    : isSyncing
+      ? syncState.activeOperation === "pull"
+        ? "Syncing from cloud"
+        : "Syncing to cloud"
+      : syncState.status === "failed"
+        ? "Sync failed"
+        : syncState.pendingChanges > 0
+          ? syncState.pendingChanges === 1
+            ? "1 local change waiting"
+            : `${syncState.pendingChanges} local changes waiting`
+          : syncState.lastSyncedAt
+            ? "Synced"
+            : "Cloud sync enabled";
   const sessionLabel = isSessionLoading
     ? "Checking session"
     : user
       ? "Signed in"
       : "Signed out";
-  const syncStatus = user ? "Cloud sync enabled" : "Local only";
 
   return (
     <PageShell>
@@ -477,8 +459,8 @@ export function AccountPage() {
                 Session
               </h2>
               <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                Supabase auth is optional for now. The app remains fully local-first
-                until sync is introduced.
+                Supabase auth is optional for now. CueList still saves locally first,
+                then syncs in the background when cloud sync is available.
               </p>
             </div>
             <span className="cu-setlist-meta-pill">{sessionLabel}</span>
@@ -521,6 +503,12 @@ export function AccountPage() {
             <p className="cu-status-banner cu-status-banner-error mt-5">{error}</p>
           ) : null}
 
+          {!error && syncState.status === "failed" && syncState.lastError ? (
+            <p className="cu-status-banner cu-status-banner-error mt-5">
+              {syncState.lastError}
+            </p>
+          ) : null}
+
           {feedback ? (
             <p className="cu-status-banner cu-status-banner-success mt-5">
               {feedback}
@@ -535,15 +523,24 @@ export function AccountPage() {
                     Cloud sync
                   </p>
                   <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                    Manual for now: push this device&apos;s local data to Supabase
-                    or pull your cloud data back into IndexedDB.
+                    CueList saves locally first, pushes local changes in the
+                    background, and pulls safe cloud updates when you open or resume
+                    the app. Manual push and pull stay available as fallback tools.
                   </p>
                 </div>
                 <span className="cu-setlist-meta-pill">
-                  {lastSyncedAt
-                    ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
+                  {syncState.lastSyncedAt
+                    ? `Last synced ${new Date(syncState.lastSyncedAt).toLocaleString()}`
                     : "No sync yet"}
                 </span>
+              </div>
+
+              <div className="mt-3 text-sm text-[var(--text-secondary)]">
+                {syncState.pendingChanges > 0
+                  ? `${syncState.pendingChanges} local ${syncState.pendingChanges === 1 ? "change is" : "changes are"} waiting to sync.`
+                  : isSyncing
+                    ? "Sync is in progress."
+                    : "Everything on this device is currently synced."}
               </div>
 
               <div className="mt-4 flex flex-wrap gap-3">
@@ -553,7 +550,9 @@ export function AccountPage() {
                   onClick={handlePushLocalToCloud}
                   disabled={isSyncing || isSessionLoading || isResetting}
                 >
-                  {isSyncing ? "Syncing..." : "Push local to cloud"}
+                  {isSyncing && syncState.activeOperation === "push"
+                    ? "Syncing..."
+                    : "Push local to cloud"}
                 </button>
                 <button
                   type="button"
@@ -561,7 +560,9 @@ export function AccountPage() {
                   onClick={handlePullCloudToLocal}
                   disabled={isSyncing || isSessionLoading || isResetting}
                 >
-                  Pull cloud to local
+                  {isSyncing && syncState.activeOperation === "pull"
+                    ? "Checking cloud..."
+                    : "Pull cloud to local"}
                 </button>
                 <button
                   type="button"

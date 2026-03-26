@@ -1,4 +1,5 @@
 import type { PerformanceType, Setlist, Song } from "../../domain/models";
+import { createPendingSyncMetadata } from "../../domain/sync-metadata";
 
 const timestamp = "2026-03-14T20:00:00.000Z";
 
@@ -9,6 +10,7 @@ export const seededPerformanceTypes: PerformanceType[] = [
     isSeeded: true,
     createdAt: timestamp,
     updatedAt: timestamp,
+    syncMetadata: createPendingSyncMetadata(),
   },
   {
     id: "ptype_electric",
@@ -16,6 +18,7 @@ export const seededPerformanceTypes: PerformanceType[] = [
     isSeeded: true,
     createdAt: timestamp,
     updatedAt: timestamp,
+    syncMetadata: createPendingSyncMetadata(),
   },
   {
     id: "ptype_full_band",
@@ -23,6 +26,7 @@ export const seededPerformanceTypes: PerformanceType[] = [
     isSeeded: true,
     createdAt: timestamp,
     updatedAt: timestamp,
+    syncMetadata: createPendingSyncMetadata(),
   },
 ];
 
@@ -49,6 +53,7 @@ export const seededSongs: Song[] = [
     ],
     createdAt: timestamp,
     updatedAt: timestamp,
+    syncMetadata: createPendingSyncMetadata(),
   },
   {
     id: "song_glass_on_the_floor",
@@ -72,13 +77,13 @@ export const seededSongs: Song[] = [
     ],
     createdAt: timestamp,
     updatedAt: timestamp,
+    syncMetadata: createPendingSyncMetadata(),
   },
   {
     id: "song_rusted_satellite",
     title: "Rusted Satellite",
     sourceType: "original",
-    songSheet:
-      "[Dm]Static in the rafters\nheartbeat in the [G]kick drum",
+    songSheet: "[Dm]Static in the rafters\nheartbeat in the [G]kick drum",
     personalNotes: "Practice bridge transition slowly with metronome.",
     tags: ["practice", "band"],
     performanceProfiles: [
@@ -95,6 +100,7 @@ export const seededSongs: Song[] = [
     ],
     createdAt: timestamp,
     updatedAt: timestamp,
+    syncMetadata: createPendingSyncMetadata(),
   },
   {
     id: "song_northern_line",
@@ -113,6 +119,7 @@ export const seededSongs: Song[] = [
     ],
     createdAt: timestamp,
     updatedAt: timestamp,
+    syncMetadata: createPendingSyncMetadata(),
   },
 ];
 
@@ -145,6 +152,7 @@ export const seededSetlists: Setlist[] = [
     ],
     createdAt: timestamp,
     updatedAt: timestamp,
+    syncMetadata: createPendingSyncMetadata(),
   },
   {
     id: "setlist_band_rehearsal",
@@ -166,5 +174,6 @@ export const seededSetlists: Setlist[] = [
     ],
     createdAt: timestamp,
     updatedAt: timestamp,
+    syncMetadata: createPendingSyncMetadata(),
   },
 ];
