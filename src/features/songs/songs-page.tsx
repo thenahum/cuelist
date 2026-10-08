@@ -17,6 +17,7 @@ import type {
 import { useRepositories } from "../../app/repository-context";
 import { PageContentStack } from "../../components/page-content-stack";
 import { PageShell } from "../../components/page-shell";
+import { KeyboardAwareSearchPanel } from "../../components/keyboard-aware-search-panel";
 import { PerformanceProfileChip } from "./performance-profile-chip";
 import {
   comfortLevelOptions,
@@ -357,16 +358,16 @@ export function SongsPage() {
             type="button"
             aria-label="Close search"
             onClick={() => setSearchOpen(false)}
-            className="cu-song-search-backdrop"
+            className="cu-search-backdrop"
           />
-          <section className="cu-song-search-panel">
+          <KeyboardAwareSearchPanel>
             <div className="relative">
               <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
                 <SearchIcon />
               </div>
               <input
                 ref={searchInputRef}
-                className="cu-song-search-input"
+                className="cu-search-input"
                 value={filters.query ?? ""}
                 onChange={(event) =>
                   updateSearchParam("q", event.target.value || undefined)
@@ -520,7 +521,7 @@ export function SongsPage() {
                 </div>
               </div>
             ) : null}
-          </section>
+          </KeyboardAwareSearchPanel>
         </>
       ) : null}
 

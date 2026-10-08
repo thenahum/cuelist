@@ -1413,8 +1413,7 @@ textarea {
   filter: brightness(1.04);
 }
 
-.cu-song-search-backdrop,
-.cu-setlist-search-backdrop {
+.cu-search-backdrop {
   position: fixed;
   inset: 0;
   z-index: 32;
@@ -1422,12 +1421,13 @@ textarea {
   background: rgba(12, 16, 21, 0.14);
 }
 
-.cu-song-search-panel,
-.cu-setlist-search-panel {
+.cu-search-panel {
   position: fixed;
   left: var(--page-gutter);
   right: var(--page-gutter);
-  bottom: calc(env(safe-area-inset-bottom) + 9.7rem);
+  bottom: calc(
+    env(safe-area-inset-bottom) + 9.7rem + var(--cu-keyboard-inset, 0px)
+  );
   z-index: 34;
   margin: 0 auto;
   width: min(34rem, calc(100vw - (var(--page-gutter) * 2)));
@@ -1437,9 +1437,10 @@ textarea {
   padding: 1rem;
   backdrop-filter: blur(30px);
   box-shadow: var(--elevation-2);
+  transition: bottom 120ms ease-out;
 }
 
-.cu-song-search-input,
+.cu-search-input,
 .cu-setlist-search-input {
   width: 100%;
   border: 1px solid var(--border);
@@ -1454,12 +1455,12 @@ textarea {
     background 180ms ease;
 }
 
-.cu-song-search-input::placeholder,
+.cu-search-input::placeholder,
 .cu-setlist-search-input::placeholder {
   color: var(--text-soft);
 }
 
-.cu-song-search-input:focus,
+.cu-search-input:focus,
 .cu-setlist-search-input:focus {
   border-color: color-mix(in srgb, var(--brand) 48%, var(--border));
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 12%, transparent);
@@ -1677,9 +1678,10 @@ textarea {
     justify-content: end;
   }
 
-  .cu-song-search-panel,
-  .cu-setlist-search-panel {
-    bottom: calc(env(safe-area-inset-bottom) + 9.2rem);
+  .cu-search-panel {
+    bottom: calc(
+      env(safe-area-inset-bottom) + 9.2rem + var(--cu-keyboard-inset, 0px)
+    );
   }
 
   .cu-song-metadata-panel {

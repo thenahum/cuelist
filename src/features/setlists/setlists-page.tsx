@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useRepositories } from "../../app/repository-context";
 import { PageContentStack } from "../../components/page-content-stack";
 import { PageShell } from "../../components/page-shell";
+import { KeyboardAwareSearchPanel } from "../../components/keyboard-aware-search-panel";
 import type {
   PerformanceType,
   Setlist,
@@ -242,16 +243,16 @@ export function SetlistsPage() {
             type="button"
             aria-label="Close setlist search"
             onClick={() => setSearchOpen(false)}
-            className="cu-setlist-search-backdrop"
+            className="cu-search-backdrop"
           />
-          <section className="cu-setlist-search-panel">
+          <KeyboardAwareSearchPanel>
             <div className="relative">
               <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
                 <SearchIcon />
               </div>
               <input
                 ref={searchInputRef}
-                className="cu-setlist-search-input"
+                className="cu-search-input"
                 value={query}
                 onChange={(event) =>
                   updateSearchParam("q", event.target.value || undefined)
@@ -324,7 +325,7 @@ export function SetlistsPage() {
                 </select>
               </div>
             ) : null}
-          </section>
+          </KeyboardAwareSearchPanel>
         </>
       ) : null}
 
