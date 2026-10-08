@@ -18,6 +18,7 @@ import type {
 } from "../../domain/models";
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock";
 import { createId } from "../../shared/id";
+import { includesSearchText, normalizeSearchText } from "../../shared/search";
 import { PerformanceProfileChip } from "../songs/performance-profile-chip";
 import {
   createEmptySetlistDraft,
@@ -498,7 +499,7 @@ export function SetlistEditor({
   );
 
   const filteredSongOptions = useMemo(() => {
-    const normalizedQuery = songPickerQuery.trim().toLowerCase();
+    const normalizedQuery = normalizeSearchText(songPickerQuery);
 
     if (!normalizedQuery) {
       return sortedSongs;
@@ -507,7 +508,7 @@ export function SetlistEditor({
     return sortedSongs.filter((song) =>
       [song.title, song.artist]
         .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(normalizedQuery)),
+        .some((value) => includesSearchText(value, normalizedQuery)),
     );
   }, [songPickerQuery, sortedSongs]);
 

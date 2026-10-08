@@ -15,6 +15,10 @@ interface ThemeContextValue {
 }
 
 const THEME_STORAGE_KEY = "cuelist.theme";
+const themeColors: Record<ThemeMode, string> = {
+  dark: "#3c2273",
+  light: "#f1edfa",
+};
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
@@ -43,6 +47,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     document.documentElement.dataset.theme = mode;
     document.documentElement.style.colorScheme = mode;
     window.localStorage.setItem(THEME_STORAGE_KEY, mode);
+    document
+      .querySelector<HTMLMetaElement>("#cuelist-theme-color")
+      ?.setAttribute("content", themeColors[mode]);
   }, [mode]);
 
   const value = useMemo<ThemeContextValue>(

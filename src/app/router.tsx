@@ -1,13 +1,50 @@
+import { lazy } from "react";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 
 import { AppShell } from "../components/app-shell";
-import { AccountPage } from "../features/account/account-page";
-import { PerformanceTypesPage } from "../features/performance-types/performance-types-page";
-import { PerformModePage } from "../features/setlists/perform-mode-page";
-import { SetlistEditorPage } from "../features/setlists/setlist-editor-page";
-import { SetlistsPage } from "../features/setlists/setlists-page";
-import { SongEditorPage } from "../features/songs/song-editor-page";
-import { SongsPage } from "../features/songs/songs-page";
+
+const AccountPage = lazy(async () => {
+  const { AccountPage: Component } = await import("../features/account/account-page");
+  return { default: Component };
+});
+
+const PerformanceTypesPage = lazy(async () => {
+  const { PerformanceTypesPage: Component } = await import(
+    "../features/performance-types/performance-types-page"
+  );
+  return { default: Component };
+});
+
+const PerformModePage = lazy(async () => {
+  const { PerformModePage: Component } = await import(
+    "../features/setlists/perform-mode-page"
+  );
+  return { default: Component };
+});
+
+const SetlistEditorPage = lazy(async () => {
+  const { SetlistEditorPage: Component } = await import(
+    "../features/setlists/setlist-editor-page"
+  );
+  return { default: Component };
+});
+
+const SetlistsPage = lazy(async () => {
+  const { SetlistsPage: Component } = await import("../features/setlists/setlists-page");
+  return { default: Component };
+});
+
+const SongEditorPage = lazy(async () => {
+  const { SongEditorPage: Component } = await import(
+    "../features/songs/song-editor-page"
+  );
+  return { default: Component };
+});
+
+const SongsPage = lazy(async () => {
+  const { SongsPage: Component } = await import("../features/songs/songs-page");
+  return { default: Component };
+});
 
 export const router = createBrowserRouter([
   {

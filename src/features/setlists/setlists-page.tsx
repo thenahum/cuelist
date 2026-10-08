@@ -4,6 +4,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useRepositories } from "../../app/repository-context";
 import { PageContentStack } from "../../components/page-content-stack";
 import { PageShell } from "../../components/page-shell";
+import { KeyboardAwareSearchPanel } from "../../components/keyboard-aware-search-panel";
+import { includesSearchText, normalizeSearchText } from "../../shared/search";
 import type {
   PerformanceType,
   Setlist,
@@ -136,7 +138,9 @@ export function SetlistsPage() {
   useEffect(() => {
     if (isSearchExpanded) {
       window.requestAnimationFrame(() => {
-        searchInputRef.current?.focus();
+        if (document.activeElement !== searchInputRef.current) {
+          searchInputRef.current?.focus({ preventScroll: true });
+        }
       });
     } else {
       setIsFilterMenuOpen(false);
@@ -144,13 +148,13 @@ export function SetlistsPage() {
   }, [isSearchExpanded]);
 
   const filteredSetlists = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = normalizeSearchText(query);
 
     return setlists.filter((setlist) => {
       const matchesQuery = normalizedQuery
         ? [setlist.title, setlist.venue, setlist.notes]
             .filter(Boolean)
-            .some((value) => value?.toLowerCase().includes(normalizedQuery))
+            .some((value) => includesSearchText(value, normalizedQuery))
         : true;
 
       const matchesPerformanceType = filterPerformanceTypeId
@@ -181,7 +185,7 @@ export function SetlistsPage() {
     );
   }
 
-  function setSearchOpen(isOpen: boolean) {
+  function setSearchOpen(isOpen: boolean, flushSync = false) {
     setSearchParams(
       (current) => {
         const next = new URLSearchParams(current);
@@ -194,8 +198,13 @@ export function SetlistsPage() {
 
         return next;
       },
-      { replace: true },
+      { replace: true, flushSync },
     );
+  }
+
+  function openSearchPanel() {
+    setSearchOpen(true, true);
+    searchInputRef.current?.focus({ preventScroll: true });
   }
 
   function clearFilters() {
@@ -238,20 +247,14 @@ export function SetlistsPage() {
 
       {isSearchExpanded ? (
         <>
-          <button
-            type="button"
-            aria-label="Close setlist search"
-            onClick={() => setSearchOpen(false)}
-            className="cu-setlist-search-backdrop"
-          />
-          <section className="cu-setlist-search-panel">
+          <KeyboardAwareSearchPanel>
             <div className="relative">
               <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
                 <SearchIcon />
               </div>
               <input
                 ref={searchInputRef}
-                className="cu-setlist-search-input"
+                className="cu-search-input"
                 value={query}
                 onChange={(event) =>
                   updateSearchParam("q", event.target.value || undefined)
@@ -324,7 +327,7 @@ export function SetlistsPage() {
                 </select>
               </div>
             ) : null}
-          </section>
+          </KeyboardAwareSearchPanel>
         </>
       ) : null}
 
@@ -409,9 +412,13 @@ export function SetlistsPage() {
       <div className="cu-setlist-action-zone">
         <button
           type="button"
-          onClick={() => setSearchOpen(true)}
+          onClick={openSearchPanel}
           aria-label="Search setlists"
-          className={`cu-setlist-search-trigger ${isSearchExpanded || hasSearchState ? "cu-setlist-search-trigger-active" : ""}`}
+          className={[
+            "cu-setlist-search-trigger",
+            isSearchExpanded ? "cu-setlist-search-trigger-active" : "",
+            hasSearchState ? "cu-setlist-search-trigger-filtered" : "",
+          ].join(" ")}
         >
           <SearchIcon />
         </button>
