@@ -1447,7 +1447,6 @@ textarea {
   padding: 1rem;
   backdrop-filter: blur(30px) saturate(150%);
   box-shadow: 0 14px 34px color-mix(in srgb, var(--shadow) 72%, transparent);
-  transition: bottom 120ms ease-out;
 }
 
 .cu-search-input,

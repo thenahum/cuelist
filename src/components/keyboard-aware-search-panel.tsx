@@ -2,8 +2,6 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
-  useState,
-  type CSSProperties,
   type PropsWithChildren,
 } from "react";
 
@@ -24,7 +22,6 @@ export function KeyboardAwareSearchPanel({
 }: KeyboardAwareSearchPanelProps) {
   const panelRef = useRef<HTMLElement | null>(null);
   const viewportCorrectionRef = useRef(0);
-  const [viewportCorrection, setViewportCorrection] = useState(0);
 
   function updateViewportCorrection() {
     const panel = panelRef.current;
@@ -46,7 +43,7 @@ export function KeyboardAwareSearchPanel({
     }
 
     viewportCorrectionRef.current = nextCorrection;
-    setViewportCorrection(nextCorrection);
+    panel.style.setProperty("--cu-viewport-correction", `${nextCorrection}px`);
   }
 
   useLayoutEffect(() => {
@@ -96,11 +93,6 @@ export function KeyboardAwareSearchPanel({
     <section
       ref={panelRef}
       className={["cu-search-panel", className].filter(Boolean).join(" ")}
-      style={
-        {
-          "--cu-viewport-correction": `${viewportCorrection}px`,
-        } as CSSProperties
-      }
     >
       {children}
     </section>
