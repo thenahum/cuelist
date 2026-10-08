@@ -412,7 +412,11 @@ export function SetlistsPage() {
           type="button"
           onClick={() => setSearchOpen(true)}
           aria-label="Search setlists"
-          className={`cu-setlist-search-trigger ${isSearchExpanded || hasSearchState ? "cu-setlist-search-trigger-active" : ""}`}
+          className={[
+            "cu-setlist-search-trigger",
+            isSearchExpanded ? "cu-setlist-search-trigger-active" : "",
+            hasSearchState ? "cu-setlist-search-trigger-filtered" : "",
+          ].join(" ")}
         >
           <SearchIcon />
         </button>

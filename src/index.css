@@ -1389,6 +1389,15 @@ textarea {
   color: var(--text-primary);
 }
 
+.cu-song-search-trigger-filtered,
+.cu-setlist-search-trigger-filtered {
+  border-color: color-mix(in srgb, var(--brand) 78%, var(--border-strong));
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--surface-elevated));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent),
+    var(--elevation-1);
+}
+
 .cu-song-add-button,
 .cu-setlist-add-button {
   display: inline-flex;
@@ -1419,7 +1428,7 @@ textarea {
   inset: 0;
   z-index: 32;
   border: 0;
-  background: rgba(12, 16, 21, 0.14);
+  background: rgba(12, 16, 21, 0.06);
 }
 
 .cu-search-panel {
@@ -1427,17 +1436,17 @@ textarea {
   left: var(--page-gutter);
   right: var(--page-gutter);
   bottom: calc(
-    env(safe-area-inset-bottom) + 9.7rem + var(--cu-keyboard-inset, 0px)
+    env(safe-area-inset-bottom) + 9.7rem + var(--cu-viewport-correction, 0px)
   );
   z-index: 34;
   margin: 0 auto;
   width: min(34rem, calc(100vw - (var(--page-gutter) * 2)));
-  border: 1px solid var(--border-strong);
-  background: color-mix(in srgb, var(--surface-elevated) 95%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-strong) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 72%, transparent);
   border-radius: 1.9rem;
   padding: 1rem;
-  backdrop-filter: blur(30px);
-  box-shadow: var(--elevation-2);
+  backdrop-filter: blur(30px) saturate(150%);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--shadow) 72%, transparent);
   transition: bottom 120ms ease-out;
 }
 
@@ -1445,7 +1454,7 @@ textarea {
 .cu-setlist-search-input {
   width: 100%;
   border: 1px solid var(--border);
-  background: var(--surface-soft);
+  background: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
   color: var(--text-primary);
   border-radius: 1.4rem;
   padding: 0.95rem 6rem 0.95rem 2.95rem;
@@ -1681,7 +1690,7 @@ textarea {
 
   .cu-search-panel {
     bottom: calc(
-      env(safe-area-inset-bottom) + 9.2rem + var(--cu-keyboard-inset, 0px)
+      env(safe-area-inset-bottom) + 9.2rem + var(--cu-viewport-correction, 0px)
     );
   }
 

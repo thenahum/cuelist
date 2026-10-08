@@ -594,7 +594,11 @@ export function SongsPage() {
           type="button"
           onClick={openSearchPanel}
           aria-label="Search songs"
-          className={`cu-song-search-trigger ${isSearchExpanded || hasSearchState ? "cu-song-search-trigger-active" : ""}`}
+          className={[
+            "cu-song-search-trigger",
+            isSearchExpanded ? "cu-song-search-trigger-active" : "",
+            hasSearchState ? "cu-song-search-trigger-filtered" : "",
+          ].join(" ")}
         >
           <SearchIcon />
         </button>
