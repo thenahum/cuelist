@@ -106,6 +106,7 @@ textarea {
 
 .cu-app-shell {
   min-height: 100svh;
+  padding-top: env(safe-area-inset-top);
   background: var(--page-bg);
   color: var(--text-primary);
 }
