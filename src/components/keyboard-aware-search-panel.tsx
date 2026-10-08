@@ -2,7 +2,10 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
   type PropsWithChildren,
+  type KeyboardEvent,
+  type FocusEvent,
 } from "react";
 
 interface KeyboardAwareSearchPanelProps extends PropsWithChildren {
@@ -22,6 +25,45 @@ export function KeyboardAwareSearchPanel({
 }: KeyboardAwareSearchPanelProps) {
   const panelRef = useRef<HTMLElement | null>(null);
   const viewportCorrectionRef = useRef(0);
+  const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+
+  function dismissKeyboard() {
+    const activeElement = document.activeElement;
+
+    if (
+      activeElement instanceof HTMLInputElement &&
+      panelRef.current?.contains(activeElement)
+    ) {
+      activeElement.blur();
+    }
+  }
+
+  function handleFocusCapture(event: FocusEvent<HTMLElement>) {
+    if (event.target instanceof HTMLInputElement) {
+      setIsKeyboardActive(true);
+    }
+  }
+
+  function handleBlurCapture() {
+    window.requestAnimationFrame(() => {
+      const activeElement = document.activeElement;
+
+      if (
+        !(
+          activeElement instanceof HTMLInputElement &&
+          panelRef.current?.contains(activeElement)
+        )
+      ) {
+        setIsKeyboardActive(false);
+      }
+    });
+  }
+
+  function handleKeyDownCapture(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
+      event.currentTarget.querySelector("input")?.blur();
+    }
+  }
 
   function updateViewportCorrection() {
     const panel = panelRef.current;
@@ -74,7 +116,6 @@ export function KeyboardAwareSearchPanel({
 
     scheduleViewportCorrection();
     viewport?.addEventListener("resize", scheduleViewportCorrection);
-    viewport?.addEventListener("scroll", scheduleViewportCorrection);
     window.addEventListener("resize", scheduleViewportCorrection);
 
     return () => {
@@ -84,17 +125,32 @@ export function KeyboardAwareSearchPanel({
 
       resizeObserver.disconnect();
       viewport?.removeEventListener("resize", scheduleViewportCorrection);
-      viewport?.removeEventListener("scroll", scheduleViewportCorrection);
       window.removeEventListener("resize", scheduleViewportCorrection);
     };
   }, []);
 
   return (
-    <section
-      ref={panelRef}
-      className={["cu-search-panel", className].filter(Boolean).join(" ")}
-    >
-      {children}
-    </section>
+    <>
+      <button
+        type="button"
+        aria-label="Dismiss search keyboard"
+        onClick={dismissKeyboard}
+        className={[
+          "cu-search-backdrop",
+          isKeyboardActive ? "cu-search-backdrop-keyboard-active" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      />
+      <section
+        ref={panelRef}
+        className={["cu-search-panel", className].filter(Boolean).join(" ")}
+        onFocusCapture={handleFocusCapture}
+        onBlurCapture={handleBlurCapture}
+        onKeyDownCapture={handleKeyDownCapture}
+      >
+        {children}
+      </section>
+    </>
   );
 }

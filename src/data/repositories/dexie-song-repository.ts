@@ -6,12 +6,9 @@ import {
 } from "../../domain/sync-metadata";
 import type { SongRepository } from "../../domain/repositories";
 import { createId } from "../../shared/id";
+import { includesSearchText, normalizeSearchText } from "../../shared/search";
 import { nowIsoString } from "../../shared/time";
 import type { CueListDexieDatabase } from "../db/cuelist-db";
-
-function includesQuery(haystack: string | undefined, query: string): boolean {
-  return haystack?.toLowerCase().includes(query) ?? false;
-}
 
 export class DexieSongRepository implements SongRepository {
   constructor(private readonly db: CueListDexieDatabase) {}
@@ -25,7 +22,7 @@ export class DexieSongRepository implements SongRepository {
       return songs;
     }
 
-    const query = filters.query?.trim().toLowerCase();
+    const query = filters.query ? normalizeSearchText(filters.query) : "";
 
     return songs.filter((song) => {
       if (filters.sourceType && song.sourceType !== filters.sourceType) {
@@ -34,10 +31,10 @@ export class DexieSongRepository implements SongRepository {
 
       if (query) {
         const matchesQuery =
-          includesQuery(song.title, query) ||
-          includesQuery(song.artist, query) ||
-          includesQuery(song.personalNotes, query) ||
-          song.tags?.some((tag) => tag.toLowerCase().includes(query));
+          includesSearchText(song.title, query) ||
+          includesSearchText(song.artist, query) ||
+          includesSearchText(song.personalNotes, query) ||
+          song.tags?.some((tag) => includesSearchText(tag, query));
 
         if (!matchesQuery) {
           return false;
@@ -45,9 +42,9 @@ export class DexieSongRepository implements SongRepository {
       }
 
       if (filters.tag) {
-        const tagQuery = filters.tag.toLowerCase();
+        const tagQuery = normalizeSearchText(filters.tag);
         const hasTag =
-          song.tags?.some((tag) => tag.toLowerCase() === tagQuery) ?? false;
+          song.tags?.some((tag) => normalizeSearchText(tag) === tagQuery) ?? false;
 
         if (!hasTag) {
           return false;

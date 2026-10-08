@@ -252,7 +252,7 @@ export function SongsPage() {
   useEffect(() => {
     if (isSearchExpanded) {
       window.requestAnimationFrame(() => {
-        searchInputRef.current?.focus();
+        searchInputRef.current?.focus({ preventScroll: true });
       });
     }
   }, [isSearchExpanded]);
@@ -354,12 +354,6 @@ export function SongsPage() {
 
       {isSearchExpanded ? (
         <>
-          <button
-            type="button"
-            aria-label="Close search"
-            onClick={() => setSearchOpen(false)}
-            className="cu-search-backdrop"
-          />
           <KeyboardAwareSearchPanel>
             <div className="relative">
               <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">

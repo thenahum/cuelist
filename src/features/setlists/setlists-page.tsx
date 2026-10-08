@@ -5,6 +5,7 @@ import { useRepositories } from "../../app/repository-context";
 import { PageContentStack } from "../../components/page-content-stack";
 import { PageShell } from "../../components/page-shell";
 import { KeyboardAwareSearchPanel } from "../../components/keyboard-aware-search-panel";
+import { includesSearchText, normalizeSearchText } from "../../shared/search";
 import type {
   PerformanceType,
   Setlist,
@@ -137,7 +138,7 @@ export function SetlistsPage() {
   useEffect(() => {
     if (isSearchExpanded) {
       window.requestAnimationFrame(() => {
-        searchInputRef.current?.focus();
+        searchInputRef.current?.focus({ preventScroll: true });
       });
     } else {
       setIsFilterMenuOpen(false);
@@ -145,13 +146,13 @@ export function SetlistsPage() {
   }, [isSearchExpanded]);
 
   const filteredSetlists = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = normalizeSearchText(query);
 
     return setlists.filter((setlist) => {
       const matchesQuery = normalizedQuery
         ? [setlist.title, setlist.venue, setlist.notes]
             .filter(Boolean)
-            .some((value) => value?.toLowerCase().includes(normalizedQuery))
+            .some((value) => includesSearchText(value, normalizedQuery))
         : true;
 
       const matchesPerformanceType = filterPerformanceTypeId
@@ -239,12 +240,6 @@ export function SetlistsPage() {
 
       {isSearchExpanded ? (
         <>
-          <button
-            type="button"
-            aria-label="Close setlist search"
-            onClick={() => setSearchOpen(false)}
-            className="cu-search-backdrop"
-          />
           <KeyboardAwareSearchPanel>
             <div className="relative">
               <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">

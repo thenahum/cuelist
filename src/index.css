@@ -1391,10 +1391,10 @@ textarea {
 
 .cu-song-search-trigger-filtered,
 .cu-setlist-search-trigger-filtered {
-  border-color: color-mix(in srgb, var(--brand) 78%, var(--border-strong));
-  background: color-mix(in srgb, var(--color-primary) 18%, var(--surface-elevated));
+  border-color: color-mix(in srgb, var(--brand) 88%, var(--border-strong));
+  background: color-mix(in srgb, var(--color-primary) 24%, var(--surface-elevated));
   box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--color-primary) 28%, transparent),
     var(--elevation-1);
 }
 
@@ -1426,9 +1426,16 @@ textarea {
 .cu-search-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 32;
+  z-index: 40;
   border: 0;
   background: rgba(12, 16, 21, 0.06);
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+}
+
+.cu-search-backdrop-keyboard-active {
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .cu-search-panel {
@@ -1438,11 +1445,11 @@ textarea {
   bottom: calc(
     env(safe-area-inset-bottom) + 9.7rem + var(--cu-viewport-correction, 0px)
   );
-  z-index: 34;
+  z-index: 41;
   margin: 0 auto;
   width: min(34rem, calc(100vw - (var(--page-gutter) * 2)));
   border: 1px solid color-mix(in srgb, var(--border-strong) 72%, transparent);
-  background: color-mix(in srgb, var(--surface-elevated) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 56%, transparent);
   border-radius: 1.9rem;
   padding: 1rem;
   backdrop-filter: blur(30px) saturate(150%);
@@ -1453,7 +1460,7 @@ textarea {
 .cu-setlist-search-input {
   width: 100%;
   border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-elevated) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 78%, transparent);
   color: var(--text-primary);
   border-radius: 1.4rem;
   padding: 0.95rem 6rem 0.95rem 2.95rem;
@@ -1859,13 +1866,15 @@ textarea {
 
 :root[data-theme="light"] .cu-song-search-panel,
 :root[data-theme="light"] .cu-setlist-search-panel,
+:root[data-theme="light"] .cu-search-panel,
 :root[data-theme="light"] .cu-song-search-trigger,
 :root[data-theme="light"] .cu-setlist-search-trigger {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 :root[data-theme="light"] .cu-song-search-input,
 :root[data-theme="light"] .cu-setlist-search-input,
+:root[data-theme="light"] .cu-search-input,
 :root[data-theme="light"] .cu-song-search-icon-button,
 :root[data-theme="light"] .cu-setlist-search-icon-button,
 :root[data-theme="light"] .cu-song-search-secondary-button,
@@ -1875,7 +1884,15 @@ textarea {
 :root[data-theme="light"] .cu-setlist-slot-badge,
 :root[data-theme="light"] .cu-song-source-pill,
 :root[data-theme="light"] .cu-setlist-meta-pill {
-  background: rgba(247, 250, 253, 0.92);
+  background: rgba(247, 250, 253, 0.8);
+}
+
+:root[data-theme="dark"] .cu-song-search-trigger-filtered,
+:root[data-theme="dark"] .cu-setlist-search-trigger-filtered {
+  background: color-mix(in srgb, var(--color-primary-soft) 32%, var(--surface-elevated));
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-primary-soft) 38%, transparent),
+    var(--elevation-1);
 }
 
 :root[data-theme="light"] .cu-comfort-chip-ready {

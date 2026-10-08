@@ -5,6 +5,7 @@ import type { PerformanceType, Setlist, Song } from "../../domain/models";
 import { useRepositories } from "../../app/repository-context";
 import { PageContentStack } from "../../components/page-content-stack";
 import { PageShell } from "../../components/page-shell";
+import { includesSearchText, normalizeSearchText } from "../../shared/search";
 
 const inputClassName =
   "mt-2 cu-search-field";
@@ -155,14 +156,14 @@ export function PerformanceTypesPage() {
   }, [activeType, activeTypeId, setSearchParams]);
 
   const filteredPerformanceTypes = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = normalizeSearchText(query);
 
     if (!normalizedQuery) {
       return performanceTypes;
     }
 
     return performanceTypes.filter((type) =>
-      type.name.toLowerCase().includes(normalizedQuery),
+      includesSearchText(type.name, normalizedQuery),
     );
   }, [performanceTypes, query]);
 
