@@ -252,7 +252,9 @@ export function SongsPage() {
   useEffect(() => {
     if (isSearchExpanded) {
       window.requestAnimationFrame(() => {
-        searchInputRef.current?.focus({ preventScroll: true });
+        if (document.activeElement !== searchInputRef.current) {
+          searchInputRef.current?.focus({ preventScroll: true });
+        }
       });
     }
   }, [isSearchExpanded]);
@@ -290,7 +292,7 @@ export function SongsPage() {
     );
   }
 
-  function setSearchOpen(isOpen: boolean) {
+  function setSearchOpen(isOpen: boolean, flushSync = false) {
     setSearchParams(
       (current) => {
         const next = new URLSearchParams(current);
@@ -303,7 +305,7 @@ export function SongsPage() {
 
         return next;
       },
-      { replace: true },
+      { replace: true, flushSync },
     );
   }
 
@@ -324,7 +326,8 @@ export function SongsPage() {
   }
 
   function openSearchPanel() {
-    setSearchOpen(true);
+    setSearchOpen(true, true);
+    searchInputRef.current?.focus({ preventScroll: true });
   }
 
   return (

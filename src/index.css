@@ -1449,7 +1449,7 @@ textarea {
   margin: 0 auto;
   width: min(34rem, calc(100vw - (var(--page-gutter) * 2)));
   border: 1px solid color-mix(in srgb, var(--border-strong) 72%, transparent);
-  background: color-mix(in srgb, var(--surface-elevated) 56%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 20%, transparent);
   border-radius: 1.9rem;
   padding: 1rem;
   backdrop-filter: blur(30px) saturate(150%);
@@ -1869,7 +1869,7 @@ textarea {
 :root[data-theme="light"] .cu-search-panel,
 :root[data-theme="light"] .cu-song-search-trigger,
 :root[data-theme="light"] .cu-setlist-search-trigger {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 :root[data-theme="light"] .cu-song-search-input,

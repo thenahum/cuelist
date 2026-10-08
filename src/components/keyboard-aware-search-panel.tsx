@@ -129,6 +129,45 @@ export function KeyboardAwareSearchPanel({
     };
   }, []);
 
+  useEffect(() => {
+    if (!isKeyboardActive) {
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    let settleTimeoutId: number | null = null;
+    let animationFrameId: number | null = null;
+
+    function scheduleSettledViewportCorrection() {
+      if (settleTimeoutId !== null) {
+        window.clearTimeout(settleTimeoutId);
+      }
+
+      settleTimeoutId = window.setTimeout(() => {
+        settleTimeoutId = null;
+        animationFrameId = window.requestAnimationFrame(() => {
+          animationFrameId = null;
+          updateViewportCorrection();
+        });
+      }, 120);
+    }
+
+    viewport?.addEventListener("scroll", scheduleSettledViewportCorrection);
+    scheduleSettledViewportCorrection();
+
+    return () => {
+      if (settleTimeoutId !== null) {
+        window.clearTimeout(settleTimeoutId);
+      }
+
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+
+      viewport?.removeEventListener("scroll", scheduleSettledViewportCorrection);
+    };
+  }, [isKeyboardActive]);
+
   return (
     <>
       <button

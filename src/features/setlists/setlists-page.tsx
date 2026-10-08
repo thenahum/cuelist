@@ -138,7 +138,9 @@ export function SetlistsPage() {
   useEffect(() => {
     if (isSearchExpanded) {
       window.requestAnimationFrame(() => {
-        searchInputRef.current?.focus({ preventScroll: true });
+        if (document.activeElement !== searchInputRef.current) {
+          searchInputRef.current?.focus({ preventScroll: true });
+        }
       });
     } else {
       setIsFilterMenuOpen(false);
@@ -183,7 +185,7 @@ export function SetlistsPage() {
     );
   }
 
-  function setSearchOpen(isOpen: boolean) {
+  function setSearchOpen(isOpen: boolean, flushSync = false) {
     setSearchParams(
       (current) => {
         const next = new URLSearchParams(current);
@@ -196,8 +198,13 @@ export function SetlistsPage() {
 
         return next;
       },
-      { replace: true },
+      { replace: true, flushSync },
     );
+  }
+
+  function openSearchPanel() {
+    setSearchOpen(true, true);
+    searchInputRef.current?.focus({ preventScroll: true });
   }
 
   function clearFilters() {
@@ -405,7 +412,7 @@ export function SetlistsPage() {
       <div className="cu-setlist-action-zone">
         <button
           type="button"
-          onClick={() => setSearchOpen(true)}
+          onClick={openSearchPanel}
           aria-label="Search setlists"
           className={[
             "cu-setlist-search-trigger",
