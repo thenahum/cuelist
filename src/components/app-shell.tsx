@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   Link,
   NavLink,
@@ -34,6 +34,19 @@ function isNavItemActive(pathname: string, itemPath: string): boolean {
 
 function navClassName(isActive: boolean): string {
   return isActive ? "cu-nav-item cu-nav-item-active" : "cu-nav-item";
+}
+
+function RouteLoadingFallback() {
+  return (
+    <PageShell>
+      <p
+        className="py-8 text-center text-sm text-[var(--text-muted)]"
+        role="status"
+      >
+        Loading page…
+      </p>
+    </PageShell>
+  );
 }
 
 export function AppShell() {
@@ -98,7 +111,9 @@ export function AppShell() {
         )}
 
         <main className="flex-1">
-          <Outlet />
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 
