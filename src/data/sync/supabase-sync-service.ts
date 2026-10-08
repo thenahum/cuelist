@@ -1,6 +1,12 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 
-import { ensureSyncMetadata, isEntityDirty, markEntitySyncFailed, markEntitySynced } from "../../domain/sync-metadata";
+import {
+  ensureSyncMetadata,
+  isEntityDirty,
+  markEntityDirty,
+  markEntitySyncFailed,
+  markEntitySynced,
+} from "../../domain/sync-metadata";
 import type { SyncableEntity } from "../../domain/models";
 import type { CloudSyncService } from "../../domain/sync";
 import type { CueListDexieDatabase } from "../db/cuelist-db";
@@ -59,16 +65,94 @@ function toEntityMap<T extends SyncableEntity & { id: string }>(entities: T[]): 
   return new Map(entities.map((entity) => [entity.id, ensureSyncMetadata(entity)]));
 }
 
-async function markEntitiesSyncFailed<T extends SyncableEntity & { id: string }>(
-  table: { bulkPut(records: T[]): Promise<unknown> },
-  entities: T[],
-  message: string,
+interface SyncableTable<T extends SyncableEntity & { id: string }> {
+  bulkGet(keys: string[]): Promise<(T | undefined)[]>;
+  bulkPut(records: T[]): Promise<unknown>;
+  toArray(): Promise<T[]>;
+}
+
+function compareUpdatedAt(left: string, right: string): number {
+  const leftTime = Date.parse(left);
+  const rightTime = Date.parse(right);
+
+  if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+    return left.localeCompare(right);
+  }
+
+  return leftTime - rightTime;
+}
+
+async function markCurrentEntities<T extends SyncableEntity & { id: string }>(
+  table: SyncableTable<T>,
+  attemptedEntities: T[],
+  transform: (entity: T) => T,
 ) {
-  if (entities.length === 0) {
+  if (attemptedEntities.length === 0) {
     return;
   }
 
-  await table.bulkPut(entities.map((entity) => markEntitySyncFailed(entity, message)));
+  const currentEntities = await table.bulkGet(
+    attemptedEntities.map((entity) => entity.id),
+  );
+  const entitiesToUpdate = currentEntities.flatMap((entity, index) =>
+    entity && entity.updatedAt === attemptedEntities[index].updatedAt
+      ? [transform(entity)]
+      : [],
+  );
+
+  if (entitiesToUpdate.length > 0) {
+    await table.bulkPut(entitiesToUpdate);
+  }
+}
+
+async function markEntitiesSyncFailed<T extends SyncableEntity & { id: string }>(
+  table: SyncableTable<T>,
+  entities: T[],
+  message: string,
+) {
+  await markCurrentEntities(table, entities, (entity) =>
+    markEntitySyncFailed(entity, message),
+  );
+}
+
+function reconcilePulledEntities<T extends SyncableEntity & { id: string }>(
+  cloudEntities: T[],
+  localEntities: T[],
+): { cloudEntitiesToWrite: T[]; localEntitiesToMarkDirty: T[] } {
+  const localEntitiesById = toEntityMap(localEntities);
+  const cloudEntitiesToWrite: T[] = [];
+  const localEntitiesToMarkDirty: T[] = [];
+
+  for (const cloudEntity of cloudEntities) {
+    const localEntity = localEntitiesById.get(cloudEntity.id);
+
+    if (!localEntity) {
+      cloudEntitiesToWrite.push(cloudEntity);
+      continue;
+    }
+
+    const timestampComparison = compareUpdatedAt(
+      localEntity.updatedAt,
+      cloudEntity.updatedAt,
+    );
+
+    if (timestampComparison > 0) {
+      if (!isEntityDirty(localEntity)) {
+        localEntitiesToMarkDirty.push(
+          markEntityDirty(localEntity, localEntity.updatedAt),
+        );
+      }
+      continue;
+    }
+
+    if (timestampComparison === 0 && isEntityDirty(localEntity)) {
+      continue;
+    }
+
+    cloudEntitiesToWrite.push(cloudEntity);
+  }
+
+  return { cloudEntitiesToWrite, localEntitiesToMarkDirty };
 }
 
 export class SupabaseSyncService implements CloudSyncService {
@@ -242,19 +326,17 @@ export class SupabaseSyncService implements CloudSyncService {
       this.db.meta,
       async () => {
         await Promise.all([
-          dirtyPerformanceTypes.length > 0
-            ? this.db.performanceTypes.bulkPut(
-                dirtyPerformanceTypes.map((item) => markEntitySynced(item, pushedAt)),
-              )
-            : Promise.resolve(),
-          dirtySongs.length > 0
-            ? this.db.songs.bulkPut(dirtySongs.map((item) => markEntitySynced(item, pushedAt)))
-            : Promise.resolve(),
-          dirtySetlists.length > 0
-            ? this.db.setlists.bulkPut(
-                dirtySetlists.map((item) => markEntitySynced(item, pushedAt)),
-              )
-            : Promise.resolve(),
+          markCurrentEntities(
+            this.db.performanceTypes,
+            dirtyPerformanceTypes,
+            (entity) => markEntitySynced(entity, pushedAt),
+          ),
+          markCurrentEntities(this.db.songs, dirtySongs, (entity) =>
+            markEntitySynced(entity, pushedAt),
+          ),
+          markCurrentEntities(this.db.setlists, dirtySetlists, (entity) =>
+            markEntitySynced(entity, pushedAt),
+          ),
           this.db.meta.put({
             key: getLastSyncAtKey(userId),
             value: pushedAt,
@@ -274,9 +356,6 @@ export class SupabaseSyncService implements CloudSyncService {
       songProfilesResponse,
       setlistsResponse,
       setlistEntriesResponse,
-      localPerformanceTypes,
-      localSongs,
-      localSetlists,
     ] = await Promise.all([
       client.from("performance_types").select("*").eq("user_id", userId),
       client.from("songs").select("*").eq("user_id", userId),
@@ -284,9 +363,6 @@ export class SupabaseSyncService implements CloudSyncService {
       client.from("song_performance_profiles").select("*"),
       client.from("setlists").select("*").eq("user_id", userId),
       client.from("setlist_entries").select("*"),
-      this.db.performanceTypes.toArray(),
-      this.db.songs.toArray(),
-      this.db.setlists.toArray(),
     ]);
 
     throwIfError(performanceTypesResponse.error);
@@ -324,23 +400,6 @@ export class SupabaseSyncService implements CloudSyncService {
     const nextSongs = mapSongRowsToModels(songs, songTags, songProfiles, pulledAt);
     const nextSetlists = mapSetlistRowsToModels(setlists, setlistEntries, pulledAt);
 
-    const localPerformanceTypeMap = toEntityMap(localPerformanceTypes);
-    const localSongMap = toEntityMap(localSongs);
-    const localSetlistMap = toEntityMap(localSetlists);
-
-    const safePerformanceTypes = nextPerformanceTypes.filter((item) => {
-      const localItem = localPerformanceTypeMap.get(item.id);
-      return !localItem || !isEntityDirty(localItem);
-    });
-    const safeSongs = nextSongs.filter((item) => {
-      const localItem = localSongMap.get(item.id);
-      return !localItem || !isEntityDirty(localItem);
-    });
-    const safeSetlists = nextSetlists.filter((item) => {
-      const localItem = localSetlistMap.get(item.id);
-      return !localItem || !isEntityDirty(localItem);
-    });
-
     await this.db.transaction(
       "rw",
       this.db.performanceTypes,
@@ -348,13 +407,43 @@ export class SupabaseSyncService implements CloudSyncService {
       this.db.setlists,
       this.db.meta,
       async () => {
+        const [localPerformanceTypes, localSongs, localSetlists] = await Promise.all([
+          this.db.performanceTypes.toArray(),
+          this.db.songs.toArray(),
+          this.db.setlists.toArray(),
+        ]);
+        const performanceTypeReconciliation = reconcilePulledEntities(
+          nextPerformanceTypes,
+          localPerformanceTypes,
+        );
+        const songReconciliation = reconcilePulledEntities(nextSongs, localSongs);
+        const setlistReconciliation = reconcilePulledEntities(
+          nextSetlists,
+          localSetlists,
+        );
+
         await Promise.all([
-          safePerformanceTypes.length > 0
-            ? this.db.performanceTypes.bulkPut(safePerformanceTypes)
+          performanceTypeReconciliation.cloudEntitiesToWrite.length > 0
+            ? this.db.performanceTypes.bulkPut(
+                performanceTypeReconciliation.cloudEntitiesToWrite,
+              )
             : Promise.resolve(),
-          safeSongs.length > 0 ? this.db.songs.bulkPut(safeSongs) : Promise.resolve(),
-          safeSetlists.length > 0
-            ? this.db.setlists.bulkPut(safeSetlists)
+          performanceTypeReconciliation.localEntitiesToMarkDirty.length > 0
+            ? this.db.performanceTypes.bulkPut(
+                performanceTypeReconciliation.localEntitiesToMarkDirty,
+              )
+            : Promise.resolve(),
+          songReconciliation.cloudEntitiesToWrite.length > 0
+            ? this.db.songs.bulkPut(songReconciliation.cloudEntitiesToWrite)
+            : Promise.resolve(),
+          songReconciliation.localEntitiesToMarkDirty.length > 0
+            ? this.db.songs.bulkPut(songReconciliation.localEntitiesToMarkDirty)
+            : Promise.resolve(),
+          setlistReconciliation.cloudEntitiesToWrite.length > 0
+            ? this.db.setlists.bulkPut(setlistReconciliation.cloudEntitiesToWrite)
+            : Promise.resolve(),
+          setlistReconciliation.localEntitiesToMarkDirty.length > 0
+            ? this.db.setlists.bulkPut(setlistReconciliation.localEntitiesToMarkDirty)
             : Promise.resolve(),
           this.db.meta.put({
             key: getLastSyncAtKey(userId),

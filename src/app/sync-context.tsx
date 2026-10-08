@@ -95,6 +95,13 @@ export function SyncProvider({
     };
   }, []);
 
+  useEffect(() => {
+    if (autoPushTimeoutRef.current !== null) {
+      window.clearTimeout(autoPushTimeoutRef.current);
+      autoPushTimeoutRef.current = null;
+    }
+  }, [userId]);
+
   async function refreshSyncStateForUser(nextUserId = userId) {
     const [pendingChanges, lastSyncedAt] = await Promise.all([
       syncService.getPendingSyncCount(),
@@ -377,7 +384,7 @@ export function SyncProvider({
       songs: createSongRepository(repositories.songs),
       setlists: createSetlistRepository(repositories.setlists),
     }),
-    [repositories],
+    [repositories, userId],
   );
 
   const value = useMemo<SyncContextValue>(
