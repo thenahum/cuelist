@@ -22,4 +22,3 @@ export function reorderEntries(
     order: index + 1,
   }));
 }
-
