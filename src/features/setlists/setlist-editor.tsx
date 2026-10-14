@@ -1,11 +1,9 @@
 import {
-  type ReactNode,
   useEffect,
   useMemo,
   useRef,
   useState,
   type FormEvent,
-  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { Link } from "react-router-dom";
 
@@ -17,6 +15,9 @@ import type {
   Song,
 } from "../../domain/models";
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock";
+import { SetlistEntryCard } from "./setlist-entry-card";
+import { SetlistSortableList } from "./setlist-sortable-list";
+import { reorderEntries } from "./setlist-reorder";
 import { createId } from "../../shared/id";
 import { includesSearchText, normalizeSearchText } from "../../shared/search";
 import { PerformanceProfileChip } from "../songs/performance-profile-chip";
@@ -52,30 +53,6 @@ interface SetlistFormState {
   songEntries: EditableSetlistEntry[];
 }
 
-interface EntryDragState {
-  cardHeight: number;
-  cardWidth: number;
-  dropIndex: number;
-  entryId: string;
-  offsetX: number;
-  offsetY: number;
-  originIndex: number;
-  pointerId: number;
-  pointerX: number;
-  pointerY: number;
-}
-
-interface PendingEntryDragRequest {
-  entryId: string;
-  handleOffsetX: number;
-  handleOffsetY: number;
-  pointerId: number;
-  pointerX: number;
-  pointerY: number;
-}
-
-const dragPreviewVerticalBiasPx = 8;
-
 const fieldClassName =
   "w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 text-[0.95rem] text-[var(--text-primary)] outline-none transition placeholder:text-[var(--text-soft)] focus:border-[color-mix(in_srgb,var(--brand)_48%,var(--border))] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-primary)_12%,transparent)]";
 
@@ -86,7 +63,6 @@ const inlineTitleClassName =
   "w-full border-0 border-b border-[var(--border-strong)] bg-transparent px-0 pb-3 pt-1 text-3xl font-semibold tracking-tight text-[var(--text-primary)] outline-none transition placeholder:text-[var(--text-soft)] focus:border-[color-mix(in_srgb,var(--brand)_52%,var(--border-strong))] sm:text-4xl";
 
 const notesClassName = `${fieldClassName} min-h-28 resize-y`;
-const entryNotesClassName = `${fieldClassName} min-h-24 resize-y`;
 
 function PencilIcon() {
   return (
@@ -110,34 +86,6 @@ function PlusIcon() {
         stroke="currentColor"
         strokeWidth="1.9"
         strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function GripIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-      <path
-        d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function MoreIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-      <path
-        d="M12 6h.01M12 12h.01M12 18h.01"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   );
@@ -188,29 +136,6 @@ function formatDateLabel(performanceDate: string): string {
   return performanceDate ? formatSetlistDate(performanceDate) : "Add date";
 }
 
-function reorderEntries(
-  entries: EditableSetlistEntry[],
-  draggedEntryId: string,
-  insertIndex: number,
-): EditableSetlistEntry[] {
-  const sourceIndex = entries.findIndex((entry) => entry.id === draggedEntryId);
-
-  if (sourceIndex < 0) {
-    return entries;
-  }
-
-  const nextEntries = [...entries];
-  const [movedEntry] = nextEntries.splice(sourceIndex, 1);
-  const normalizedInsertIndex = Math.max(0, Math.min(insertIndex, nextEntries.length));
-
-  nextEntries.splice(normalizedInsertIndex, 0, movedEntry);
-
-  return nextEntries.map((entry, index) => ({
-    ...entry,
-    order: index + 1,
-  }));
-}
-
 export function SetlistEditor({
   setlist,
   songs,
@@ -232,15 +157,9 @@ export function SetlistEditor({
     string | null
   >(null);
   const [songPickerQuery, setSongPickerQuery] = useState("");
-  const [dragState, setDragState] = useState<EntryDragState | null>(null);
-  const [pendingDragRequest, setPendingDragRequest] =
-    useState<PendingEntryDragRequest | null>(null);
-  const [openEntryMenuId, setOpenEntryMenuId] = useState<string | null>(null);
+  const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const songPickerInputRef = useRef<HTMLInputElement | null>(null);
-  const songEntryCardRefs = useRef(new Map<string, HTMLElement>());
-  const songEntryHandleRefs = useRef(new Map<string, HTMLElement>());
-  const songEntryMenuRefs = useRef(new Map<string, HTMLElement>());
-  const dragStateRef = useRef<EntryDragState | null>(null);
   const shouldKeepScreenAwake = isExistingSetlist && !isEditMode;
 
   useScreenWakeLock(shouldKeepScreenAwake);
@@ -248,6 +167,8 @@ export function SetlistEditor({
   useEffect(() => {
     setFormState(createFormState(setlist));
     setIsEditMode(!setlist);
+    setExpandedEntryId(null);
+    setIsDragging(false);
   }, [setlist]);
 
   useEffect(() => {
@@ -260,233 +181,6 @@ export function SetlistEditor({
       setSongPickerTargetEntryId(null);
     }
   }, [isSongPickerOpen]);
-
-  useEffect(() => {
-    dragStateRef.current = dragState;
-  }, [dragState]);
-
-  useEffect(() => {
-    if (!openEntryMenuId) {
-      return;
-    }
-
-    const activeMenuId = openEntryMenuId;
-
-    function handleDocumentPointerDown(event: PointerEvent) {
-      const menuElement = songEntryMenuRefs.current.get(activeMenuId);
-
-      if (!menuElement) {
-        setOpenEntryMenuId(null);
-        return;
-      }
-
-      if (event.target instanceof Node && menuElement.contains(event.target)) {
-        return;
-      }
-
-      setOpenEntryMenuId(null);
-    }
-
-    function handleDocumentKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpenEntryMenuId(null);
-      }
-    }
-
-    document.addEventListener("pointerdown", handleDocumentPointerDown);
-    document.addEventListener("keydown", handleDocumentKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handleDocumentPointerDown);
-      document.removeEventListener("keydown", handleDocumentKeyDown);
-    };
-  }, [openEntryMenuId]);
-
-  useEffect(() => {
-    if (!pendingDragRequest) {
-      return;
-    }
-
-    const activePointerId = pendingDragRequest.pointerId;
-    let isCancelled = false;
-
-    function cancelPendingDrag(event: PointerEvent) {
-      if (event.pointerId !== activePointerId) {
-        return;
-      }
-
-      isCancelled = true;
-      setPendingDragRequest(null);
-    }
-
-    const animationFrameId = window.requestAnimationFrame(() => {
-      if (isCancelled) {
-        return;
-      }
-
-      const cardElement = songEntryCardRefs.current.get(pendingDragRequest.entryId);
-      const handleElement = songEntryHandleRefs.current.get(pendingDragRequest.entryId);
-      const originIndex = formState.songEntries.findIndex(
-        (songEntry) => songEntry.id === pendingDragRequest.entryId,
-      );
-
-      if (!cardElement || !handleElement || originIndex < 0) {
-        setPendingDragRequest(null);
-        return;
-      }
-
-      const collapsedCardRect = cardElement.getBoundingClientRect();
-      const collapsedHandleRect = handleElement.getBoundingClientRect();
-      const handleOffsetX = collapsedHandleRect.left - collapsedCardRect.left;
-      const handleOffsetY = collapsedHandleRect.top - collapsedCardRect.top;
-      const nextOffsetX = Math.min(
-        collapsedCardRect.width,
-        Math.max(0, handleOffsetX + pendingDragRequest.handleOffsetX),
-      );
-      const nextOffsetY = Math.min(
-        collapsedCardRect.height,
-        Math.max(
-          0,
-          handleOffsetY + pendingDragRequest.handleOffsetY + dragPreviewVerticalBiasPx,
-        ),
-      );
-
-      setDragState({
-        cardHeight: collapsedCardRect.height,
-        cardWidth: collapsedCardRect.width,
-        dropIndex: originIndex,
-        entryId: pendingDragRequest.entryId,
-        offsetX: nextOffsetX,
-        offsetY: nextOffsetY,
-        originIndex,
-        pointerId: pendingDragRequest.pointerId,
-        pointerX: pendingDragRequest.pointerX,
-        pointerY: pendingDragRequest.pointerY,
-      });
-      setPendingDragRequest(null);
-    });
-
-    window.addEventListener("pointerup", cancelPendingDrag);
-    window.addEventListener("pointercancel", cancelPendingDrag);
-
-    return () => {
-      isCancelled = true;
-      window.cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("pointerup", cancelPendingDrag);
-      window.removeEventListener("pointercancel", cancelPendingDrag);
-    };
-  }, [formState.songEntries, pendingDragRequest]);
-
-  useEffect(() => {
-    if (!dragState) {
-      return;
-    }
-
-    const previousUserSelect = document.body.style.userSelect;
-    const previousWebkitUserSelect = document.body.style.webkitUserSelect;
-    const activePointerId = dragState.pointerId;
-
-    document.body.style.userSelect = "none";
-    document.body.style.webkitUserSelect = "none";
-
-    function getDropIndex(clientY: number) {
-      const currentDragState = dragStateRef.current;
-
-      if (!currentDragState) {
-        return 0;
-      }
-
-      const remainingEntries = formState.songEntries.filter(
-        (songEntry) => songEntry.id !== currentDragState.entryId,
-      );
-
-      if (remainingEntries.length === 0) {
-        return 0;
-      }
-
-      let nextDropIndex = 0;
-
-      for (const [index, songEntry] of remainingEntries.entries()) {
-        const cardElement = songEntryCardRefs.current.get(songEntry.id);
-
-        if (!cardElement) {
-          continue;
-        }
-
-        const cardRect = cardElement.getBoundingClientRect();
-
-        if (clientY >= cardRect.top + cardRect.height / 2) {
-          nextDropIndex = index + 1;
-        } else {
-          break;
-        }
-      }
-
-      return nextDropIndex;
-    }
-
-    function handlePointerMove(event: PointerEvent) {
-      if (event.pointerId !== activePointerId) {
-        return;
-      }
-
-      if (event.cancelable) {
-        event.preventDefault();
-      }
-
-      setDragState((current) =>
-        current && current.pointerId === activePointerId
-          ? {
-              ...current,
-              dropIndex: getDropIndex(event.clientY),
-              pointerX: event.clientX,
-              pointerY: event.clientY,
-            }
-          : current,
-      );
-    }
-
-    function finishPointerDrag(event: PointerEvent) {
-      if (event.pointerId !== activePointerId) {
-        return;
-      }
-
-      const currentDragState = dragStateRef.current;
-
-      if (!currentDragState) {
-        setDragState(null);
-        return;
-      }
-
-      setFormState((current) => {
-        if (currentDragState.dropIndex === currentDragState.originIndex) {
-          return current;
-        }
-
-        return {
-          ...current,
-          songEntries: reorderEntries(
-            current.songEntries,
-            currentDragState.entryId,
-            currentDragState.dropIndex,
-          ),
-        };
-      });
-      setDragState(null);
-    }
-
-    window.addEventListener("pointermove", handlePointerMove, { passive: false });
-    window.addEventListener("pointerup", finishPointerDrag);
-    window.addEventListener("pointercancel", finishPointerDrag);
-
-    return () => {
-      document.body.style.userSelect = previousUserSelect;
-      document.body.style.webkitUserSelect = previousWebkitUserSelect;
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", finishPointerDrag);
-      window.removeEventListener("pointercancel", finishPointerDrag);
-    };
-  }, [dragState?.pointerId, formState.songEntries]);
 
   const songsById = useMemo(() => new Map(songs.map((song) => [song.id, song])), [songs]);
 
@@ -523,9 +217,6 @@ export function SetlistEditor({
     };
   }, [detailPath, formState.title, setlist]);
 
-  const isReorderMode = dragState !== null || pendingDragRequest !== null;
-  const draggedEntryId = dragState?.entryId ?? null;
-
   function updateField<Key extends keyof SetlistFormState>(
     key: Key,
     value: SetlistFormState[Key],
@@ -555,7 +246,6 @@ export function SetlistEditor({
     }
 
     setError(null);
-    setOpenEntryMenuId(null);
     setSongPickerTargetEntryId(targetEntryId ?? null);
     setIsSongPickerOpen(true);
   }
@@ -596,7 +286,7 @@ export function SetlistEditor({
   }
 
   function removeSongEntry(songEntryId: string) {
-    setOpenEntryMenuId(null);
+    setExpandedEntryId((current) => current === songEntryId ? null : current);
     setFormState((current) => ({
       ...current,
       songEntries: current.songEntries
@@ -606,64 +296,6 @@ export function SetlistEditor({
           order: index + 1,
         })),
     }));
-  }
-
-  function setSongEntryCardRef(songEntryId: string, element: HTMLElement | null) {
-    if (element) {
-      songEntryCardRefs.current.set(songEntryId, element);
-      return;
-    }
-
-    songEntryCardRefs.current.delete(songEntryId);
-  }
-
-  function setSongEntryHandleRef(songEntryId: string, element: HTMLElement | null) {
-    if (element) {
-      songEntryHandleRefs.current.set(songEntryId, element);
-      return;
-    }
-
-    songEntryHandleRefs.current.delete(songEntryId);
-  }
-
-  function setSongEntryMenuRef(songEntryId: string, element: HTMLElement | null) {
-    if (element) {
-      songEntryMenuRefs.current.set(songEntryId, element);
-      return;
-    }
-
-    songEntryMenuRefs.current.delete(songEntryId);
-  }
-
-  function handleDragHandlePointerDown(
-    event: ReactPointerEvent<HTMLButtonElement>,
-    songEntryId: string,
-  ) {
-    if (!event.isPrimary) {
-      return;
-    }
-
-    if (event.pointerType === "mouse" && event.button !== 0) {
-      return;
-    }
-
-    const cardElement = songEntryCardRefs.current.get(songEntryId);
-
-    if (!cardElement) {
-      return;
-    }
-
-    event.preventDefault();
-    const handleRect = event.currentTarget.getBoundingClientRect();
-    setOpenEntryMenuId(null);
-    setPendingDragRequest({
-      entryId: songEntryId,
-      handleOffsetX: event.clientX - handleRect.left,
-      handleOffsetY: event.clientY - handleRect.top,
-      pointerId: event.pointerId,
-      pointerX: event.clientX,
-      pointerY: event.clientY,
-    });
   }
 
   function validateForm(): string | null {
@@ -682,6 +314,7 @@ export function SetlistEditor({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isDragging) return;
 
     const validationError = validateForm();
 
@@ -761,9 +394,8 @@ export function SetlistEditor({
     setFormState(createFormState(setlist));
     setError(null);
     setIsEditMode(false);
-    setDragState(null);
-    setPendingDragRequest(null);
-    setOpenEntryMenuId(null);
+    setExpandedEntryId(null);
+    setIsDragging(false);
     closeSongPicker();
   }
 
@@ -782,261 +414,6 @@ export function SetlistEditor({
       matchingProfile,
       song,
     };
-  }
-
-  function renderDropPlaceholder(displayIndex: number) {
-    if (!dragState) {
-      return null;
-    }
-
-    return (
-      <article
-        aria-hidden="true"
-        className="rounded-[26px] border border-dashed border-[color-mix(in_srgb,var(--brand)_46%,var(--border-strong))] bg-[color-mix(in_srgb,var(--surface)_88%,var(--color-primary)_12%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] transition-all duration-200 sm:p-5"
-        style={{ height: dragState.cardHeight }}
-      >
-        <div className="flex h-full gap-4">
-          <div className="shrink-0">
-            <span className="cu-setlist-slot-badge opacity-45">{displayIndex}</span>
-          </div>
-
-          <div className="flex min-w-0 flex-1 flex-col justify-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="h-4 min-w-0 flex-1 rounded-full bg-[color-mix(in_srgb,var(--border)_78%,transparent)]" />
-              <span className="h-7 w-24 shrink-0 rounded-full bg-[color-mix(in_srgb,var(--border)_72%,transparent)]" />
-            </div>
-
-            <div className="flex items-center justify-between gap-3">
-              <span className="h-3 w-32 rounded-full bg-[color-mix(in_srgb,var(--border)_62%,transparent)]" />
-              <span
-                aria-hidden="true"
-                className="cu-setlist-drag-handle pointer-events-none opacity-45"
-              >
-                <GripIcon />
-              </span>
-            </div>
-          </div>
-        </div>
-      </article>
-    );
-  }
-
-  function renderEditableSongEntryCard(
-    songEntry: EditableSetlistEntry,
-    displayIndex: number,
-    options?: {
-      isPreview?: boolean;
-    },
-  ) {
-    const isPreview = options?.isPreview ?? false;
-    const { effectivePerformanceTypeId, matchingProfile, song } =
-      getSongEntryPresentation(songEntry);
-    const isCompactDragMode = isReorderMode || isPreview;
-    const shouldDisableCollapseTransitions = pendingDragRequest !== null;
-
-    return (
-      <article
-        ref={
-          isPreview
-            ? undefined
-            : (element) => setSongEntryCardRef(songEntry.id, element)
-        }
-        className={[
-          "rounded-[26px] border border-[var(--border)] bg-[var(--surface-soft)] p-4 transition-all duration-200 sm:p-5",
-          isPreview
-            ? "border-[color-mix(in_srgb,var(--brand)_42%,var(--border-strong))] bg-[color-mix(in_srgb,var(--surface-elevated)_96%,transparent)] shadow-[0_20px_42px_rgba(5,8,14,0.26)]"
-            : "",
-        ].join(" ")}
-      >
-        <div className="flex gap-4">
-          <div className="shrink-0">
-            <span className="cu-setlist-slot-badge">{displayIndex}</span>
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-start gap-2">
-                <Link
-                  to={song ? `/songs/${song.id}` : "#"}
-                  state={songLinkState}
-                  className="min-w-0 flex-1 text-xl font-semibold tracking-tight text-[var(--text-primary)] hover:underline"
-                >
-                  <span className="block break-words leading-tight">
-                    {song?.title ?? "Unknown song"}
-                  </span>
-                </Link>
-                {matchingProfile ? (
-                  <PerformanceProfileChip
-                    profile={matchingProfile}
-                    performanceTypes={performanceTypes}
-                  />
-                ) : (
-                  <span className="cu-setlist-meta-pill shrink-0">
-                    {getPerformanceTypeName(
-                      effectivePerformanceTypeId,
-                      performanceTypes,
-                    )}
-                  </span>
-                )}
-              </div>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                {song?.artist ||
-                  (song?.sourceType === "cover"
-                    ? "Cover artist not set"
-                    : "Original catalog entry")}
-              </p>
-
-              {isCompactDragMode ? (
-                <div className="mt-3 flex items-center justify-end">
-                  <span
-                    ref={
-                      isPreview
-                        ? undefined
-                        : (element) => setSongEntryHandleRef(songEntry.id, element)
-                    }
-                    aria-hidden="true"
-                    className="cu-setlist-drag-handle pointer-events-none opacity-75"
-                  >
-                    <GripIcon />
-                  </span>
-                </div>
-              ) : null}
-            </div>
-
-            <div
-              className={[
-                openEntryMenuId === songEntry.id ? "overflow-visible" : "overflow-hidden",
-                shouldDisableCollapseTransitions
-                  ? ""
-                  : "transition-[margin,max-height,opacity] duration-200 ease-out",
-                isCompactDragMode
-                  ? "mt-0 max-h-0 opacity-0 pointer-events-none"
-                  : "mt-4 max-h-24 opacity-100",
-              ].join(" ")}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => openSongPicker(songEntry.id)}
-                  className="cu-button cu-button-neutral cu-button-small min-h-10 flex-1 justify-center sm:flex-none"
-                >
-                  Change song
-                </button>
-
-                <div
-                  ref={
-                    isPreview
-                      ? undefined
-                      : (element) => setSongEntryMenuRef(songEntry.id, element)
-                  }
-                  className="relative ml-auto"
-                >
-                  <button
-                    type="button"
-                    aria-label={`More actions for slot ${displayIndex}`}
-                    aria-haspopup="menu"
-                    aria-expanded={openEntryMenuId === songEntry.id}
-                    onClick={() =>
-                      setOpenEntryMenuId((current) =>
-                        current === songEntry.id ? null : songEntry.id,
-                      )
-                    }
-                    className="cu-setlist-icon-button"
-                  >
-                    <MoreIcon />
-                  </button>
-
-                  {openEntryMenuId === songEntry.id ? (
-                    <div
-                      role="menu"
-                      className="absolute right-0 top-full z-20 mt-2 min-w-40 rounded-[1.15rem] border border-[var(--border-strong)] bg-[color-mix(in_srgb,var(--surface-elevated)_96%,transparent)] p-2 shadow-[0_18px_40px_rgba(5,8,14,0.2)] backdrop-blur-xl"
-                    >
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => removeSongEntry(songEntry.id)}
-                        className="flex w-full items-center justify-between rounded-[0.95rem] px-3 py-2.5 text-left text-sm font-medium text-[var(--color-destructive-bg)] transition hover:bg-[color-mix(in_srgb,var(--color-destructive)_10%,transparent)]"
-                      >
-                        Remove song
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-
-                <button
-                  type="button"
-                  ref={
-                    isCompactDragMode
-                      ? undefined
-                      : (element) => setSongEntryHandleRef(songEntry.id, element)
-                  }
-                  aria-label={`Reorder slot ${displayIndex}`}
-                  onPointerDown={(event) =>
-                    handleDragHandlePointerDown(event, songEntry.id)
-                  }
-                  className="cu-setlist-drag-handle shrink-0"
-                >
-                  <GripIcon />
-                </button>
-              </div>
-            </div>
-
-            <div
-              className={[
-                "overflow-hidden",
-                shouldDisableCollapseTransitions
-                  ? ""
-                  : "transition-[margin,max-height,opacity] duration-200 ease-out",
-                isCompactDragMode
-                  ? "mt-0 max-h-0 opacity-0 pointer-events-none"
-                  : "mt-4 max-h-[28rem] opacity-100",
-              ].join(" ")}
-            >
-              <div className="grid gap-4 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
-                <label className="space-y-1.5">
-                  <span className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-[var(--text-soft)]">
-                    Profile
-                  </span>
-                  <select
-                    className={inlineFieldClassName}
-                    value={songEntry.performanceTypeId ?? ""}
-                    onChange={(event) =>
-                      updateSongEntry(songEntry.id, {
-                        performanceTypeId:
-                          normalizeOptionalText(event.target.value),
-                      })
-                    }
-                  >
-                    <option value="">Use setlist default</option>
-                    {performanceTypes.map((performanceType) => (
-                      <option key={performanceType.id} value={performanceType.id}>
-                        {performanceType.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="space-y-1.5">
-                  <span className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-[var(--text-soft)]">
-                    Entry note override
-                  </span>
-                  <textarea
-                    className={entryNotesClassName}
-                    value={songEntry.performanceNoteOverride ?? ""}
-                    onChange={(event) =>
-                      updateSongEntry(songEntry.id, {
-                        performanceNoteOverride: event.target.value,
-                      })
-                    }
-                    placeholder="Optional override note for this slot"
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </article>
-    );
   }
 
   return (
@@ -1192,6 +569,7 @@ export function SetlistEditor({
           {isEditMode ? (
             <button
               type="button"
+              disabled={isDragging || isSaving || isDeleting}
               onClick={() => openSongPicker()}
               className="cu-setlist-add-song-button"
             >
@@ -1278,91 +656,43 @@ export function SetlistEditor({
             return null;
           })}
 
-          {isEditMode
-            ? (() => {
-                const remainingEntries = draggedEntryId
-                  ? formState.songEntries.filter(
-                      (songEntry) => songEntry.id !== draggedEntryId,
-                    )
-                  : formState.songEntries;
-                const renderedCards: ReactNode[] = [];
-
-                remainingEntries.forEach((songEntry, remainingIndex) => {
-                  const displayIndex =
-                    remainingIndex +
-                    1 +
-                    (dragState && dragState.dropIndex <= remainingIndex ? 1 : 0);
-
-                  if (dragState && dragState.dropIndex === remainingIndex) {
-                    renderedCards.push(
-                      <div key={`drop-${dragState.entryId}-${remainingIndex}`}>
-                        {renderDropPlaceholder(remainingIndex + 1)}
-                      </div>,
-                    );
-                  }
-
-                  renderedCards.push(
-                    <div key={songEntry.id}>
-                      {renderEditableSongEntryCard(songEntry, displayIndex)}
-                    </div>,
-                  );
-                });
-
-                if (dragState && dragState.dropIndex === remainingEntries.length) {
-                  renderedCards.push(
-                    <div key={`drop-${dragState.entryId}-end`}>
-                      {renderDropPlaceholder(remainingEntries.length + 1)}
-                    </div>,
-                  );
-                }
-
-                return renderedCards;
-              })()
-            : null}
+          {isEditMode ? (
+            <SetlistSortableList
+              entries={formState.songEntries}
+              disabled={expandedEntryId !== null || isSongPickerOpen || isSaving || isDeleting}
+              onDraggingChange={setIsDragging}
+              onReorder={(entryId, index) => setFormState((current) => ({
+                ...current,
+                songEntries: reorderEntries(current.songEntries, entryId, index),
+              }))}
+              renderCard={(entry, index, bindings) => (
+                <SetlistEntryCard
+                  entry={entry}
+                  displayIndex={index + 1}
+                  song={songsById.get(entry.songId)}
+                  performanceTypes={performanceTypes}
+                  defaultPerformanceTypeId={normalizeOptionalText(formState.defaultPerformanceTypeId)}
+                  expanded={!bindings.isPreview && expandedEntryId === entry.id}
+                  dragDisabled={expandedEntryId !== null || isSongPickerOpen || isSaving || isDeleting}
+                  actionsDisabled={isDragging || isSaving || isDeleting}
+                  songLinkState={songLinkState}
+                  onToggleExpanded={() => setExpandedEntryId((current) => current === entry.id ? null : entry.id)}
+                  onChangeSong={() => openSongPicker(entry.id)}
+                  onRemove={() => removeSongEntry(entry.id)}
+                  onUpdate={(patch) => updateSongEntry(entry.id, patch)}
+                  {...bindings}
+                />
+              )}
+            />
+          ) : null}
         </div>
       </section>
-
-      {dragState
-        ? (() => {
-            const draggedSongEntry = formState.songEntries.find(
-              (songEntry) => songEntry.id === dragState.entryId,
-            );
-
-            if (!draggedSongEntry) {
-              return null;
-            }
-
-            const viewportWidth =
-              typeof window === "undefined" ? dragState.cardWidth : window.innerWidth;
-            const previewLeft = Math.min(
-              Math.max(12, dragState.pointerX - dragState.offsetX),
-              Math.max(12, viewportWidth - dragState.cardWidth - 12),
-            );
-
-            return (
-              <div
-                className="pointer-events-none fixed z-40"
-                style={{
-                  left: previewLeft,
-                  top: dragState.pointerY - dragState.offsetY,
-                  width: dragState.cardWidth,
-                }}
-              >
-                {renderEditableSongEntryCard(
-                  draggedSongEntry,
-                  dragState.dropIndex + 1,
-                  { isPreview: true },
-                )}
-              </div>
-            );
-          })()
-        : null}
 
       {setlist && isEditMode ? (
         <div className="flex justify-end pt-2">
           <button
             type="button"
-            disabled={isSaving || isDeleting}
+            disabled={isSaving || isDeleting || isDragging}
             onClick={handleDelete}
             className="cu-button cu-button-destructive"
           >
@@ -1375,6 +705,7 @@ export function SetlistEditor({
         <div className="cu-song-edit-action-bar">
           <button
             type="button"
+            disabled={isDragging || isSaving || isDeleting}
             onClick={handleCancelEdit}
             className="cu-button cu-button-neutral"
           >
@@ -1382,7 +713,7 @@ export function SetlistEditor({
           </button>
           <button
             type="submit"
-            disabled={isSaving || isDeleting}
+            disabled={isSaving || isDeleting || isDragging}
             className="cu-button cu-button-primary"
           >
             {isSaving ? "Saving..." : isExistingSetlist ? "Save" : "Create"}
